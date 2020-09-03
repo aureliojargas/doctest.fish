@@ -3,14 +3,18 @@
 # Defaults
 set prefix '    '
 set prompt '> '
+set color_mode auto
+set use_color 0
 set debug_level 0
 
 # Parse command line arguments
 argparse \
     'd-debug' \
+    'c-color=' \
     -- $argv
 or exit 1
 set debug_level (count $_flag_debug)
+set -q _flag_color; and set color_mode $_flag_color
 set input_file $argv[1]
 
 # This will be the main identifier for commands
@@ -22,9 +26,9 @@ set prefix_length (string length -- $prefix)
 set command_id_length (string length -- $command_id)
 
 function printf_color # color template arguments
-    set_color $argv[1]
+    test $use_color -eq 1; and set_color $argv[1]
     printf $argv[2..-1]
-    set_color normal
+    test $use_color -eq 1; and set_color normal
 end
 
 function error -a message
@@ -51,6 +55,19 @@ function show_diff
     # conversion for multiline strings)
     diff -u (printf '%s\n' $expected | psub) (printf '%s\n' $output | psub) |
     sed '1 { /^--- / { N; /\n+++ /d; }; }' # no ---/+++ headers
+end
+
+# Will we use colors in the output?
+switch $color_mode
+    case auto
+        not test -t 1 # status=0 when stdout is not a terminal
+        set use_color $status
+    case never no
+        set use_color 0
+    case always yes
+        set use_color 1
+    case '*'
+        error "Invalid --color mode '$_flag_color'. Use: auto, always or never."
 end
 
 set line_number 0
