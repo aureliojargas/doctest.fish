@@ -12,10 +12,12 @@ argparse --exclusive 'v,q' \
     'v/verbose' \
     'q/quiet' \
     'd-debug' \
+    'p-prompt=' \
     'c-color=' \
     -- $argv
 or exit 1
 set debug_level (count $_flag_debug)
+set -q _flag_prompt; and set prompt $_flag_prompt
 set -q _flag_color; and set color_mode $_flag_color
 set input_file $argv[1]
 
@@ -77,6 +79,9 @@ switch $color_mode
     case '*'
         error "Invalid --color mode '$_flag_color'. Use: auto, always or never."
 end
+
+test -n "$prompt"
+or error 'The prompt string cannot be empty, set it via --prompt'
 
 validate_input_file $input_file
 
