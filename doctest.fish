@@ -42,6 +42,12 @@ function debug -a color id line message
     and printf_color $color 'Line %d: %s [%s]\n' $line $id $message
 end
 
+function validate_input_file -a path
+    test -n "$path"; or error 'no test file informed'
+    test -d "$path"; and error "input file is a directory: $path"
+    test -r "$path"; or error "cannot read input file: $path"
+end
+
 function starts_with -a pattern string
     test -z "$pattern"; and return 0 # empty pattern always matches
     test -z "$string"; and return 1 # empty string never matches
@@ -69,6 +75,8 @@ switch $color_mode
     case '*'
         error "Invalid --color mode '$_flag_color'. Use: auto, always or never."
 end
+
+validate_input_file $input_file
 
 set line_number 0
 set test_number 0
