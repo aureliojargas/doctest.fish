@@ -9,6 +9,7 @@ set debug_level 0
 
 # Parse command line arguments
 argparse \
+    'q/quiet' \
     'd-debug' \
     'c-color=' \
     -- $argv
@@ -145,17 +146,20 @@ for line in (cat $input_file) ''
 
         if test "$output" = "$expected"
             # OK
-            printf_color green '%s:%d: [ ok ] %s\n' \
+            set -q _flag_quiet
+            or printf_color green '%s:%d: [ ok ] %s\n' \
                 $input_file $current_command_line_number $current_command
 
         else
             # FAIL
             set total_failed (math $total_failed + 1)
-            echo
-            printf_color red '%s:%d: [fail] %s\n' \
-                $input_file $current_command_line_number $current_command
-            show_diff (string collect -- $expected) (string collect -- $output)
-            echo
+            if not set -q _flag_quiet
+                echo
+                printf_color red '%s:%d: [fail] %s\n' \
+                    $input_file $current_command_line_number $current_command
+                show_diff (string collect -- $expected) (string collect -- $output)
+                echo
+            end
         end
 
         # Clear data from the already executed test
@@ -174,25 +178,27 @@ for line in (cat $input_file) ''
     end
 end
 
-# Examples of output:
-# tests/foo.md: No tests found
-# tests/foo.md: OK (7 tests passed)
-# tests/foo.md: FAIL (4 tests passed, 3 failed)
+if not set -q _flag_quiet
+    # Examples of output:
+    # tests/foo.md: No tests found
+    # tests/foo.md: OK (7 tests passed)
+    # tests/foo.md: FAIL (4 tests passed, 3 failed)
 
-# The filename is always shown in the line beginning, regardless of
-# the final test results
-printf '%s: ' $input_file
+    # The filename is always shown in the line beginning, regardless of
+    # the final test results
+    printf '%s: ' $input_file
 
-if test $test_number -eq 0
-    echo 'No tests found'
-else
-    if test $total_failed -eq 0
-        printf_color green 'OK (%d tests passed%s)\n' \
-            $test_number
+    if test $test_number -eq 0
+        echo 'No tests found'
     else
-        printf_color red 'FAILED (%d tests passed, %d failed%s)\n' \
-            (math $test_number - $total_failed) \
-            $total_failed
+        if test $total_failed -eq 0
+            printf_color green 'OK (%d tests passed%s)\n' \
+                $test_number
+        else
+            printf_color red 'FAILED (%d tests passed, %d failed%s)\n' \
+                (math $test_number - $total_failed) \
+                $total_failed
+        end
     end
 end
 
