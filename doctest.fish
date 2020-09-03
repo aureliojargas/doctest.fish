@@ -31,6 +31,10 @@ set command_id_trimmed (string replace --regex ' +$' '' -- $command_id)
 set prefix_length (string length -- $prefix)
 set command_id_length (string length -- $command_id)
 
+# Commands prefixed with this will be skipped. This is automatically
+# added to unsupported commands.
+set skip_prefix '#SKIP '
+
 function printf_color # color template arguments
     test $use_color -eq 1; and set_color $argv[1]
     printf $argv[2..-1]
@@ -69,6 +73,30 @@ function show_diff
     sed '1 { /^--- / { N; /\n+++ /d; }; }' # no ---/+++ headers
 end
 
+function handle_unsupported_commands -a cmd
+    # 1. set -l
+    #    When using `eval set -l foo`, the variable $foo is not
+    #    available for the next tests. When removing `-l` it works.
+    # 2. commandline
+    #    The following error is shown whe trying to eval it
+    #    "Can not set commandline in non-interactive mode"
+
+    if starts_with 'set -l ' $cmd; or starts_with 'set --local ' $cmd # 1
+        # XXX those regexes are too weak: set -al, set -a --local
+        string replace --regex \
+            '^set (-l|--local) (.*)' \
+            'set $2  #[set -l not supported]' \
+            -- $cmd
+    else if starts_with 'commandline ' $cmd; or starts_with 'commandline' $cmd # 2
+        string replace --regex \
+            '^(commandline.*)' \
+            $skip_prefix'$1  #[commandline not supported]' \
+            -- $cmd
+    else
+        echo -- $cmd
+    end
+end
+
 # Will we use colors in the output?
 switch $color_mode
     case auto
@@ -90,6 +118,7 @@ validate_input_file $input_file
 set line_number 0
 set test_number 0
 set total_failed 0
+set total_skipped 0
 
 # Adding extra empty "line" to the end of the input to make the
 # algorithm simpler. Then we always have a last-line trigger for the
@@ -106,6 +135,7 @@ for line in (cat $input_file) ''
         # Found a command line
 
         set next_command (string sub -s (math $command_id_length + 1) -- $line)
+        set next_command (handle_unsupported_commands $next_command)
         set next_command_line_number $line_number
 
         debug blue COMMAND $line_number $next_command
@@ -152,7 +182,14 @@ for line in (cat $input_file) ''
         # Note: eval cannot be inside a function due to scope rules. A
         #       defined foo var should be accessible by the next tests.
 
-        if test "$output" = "$expected"
+        if starts_with $skip_prefix $current_command
+            # SKIP
+            set total_skipped (math $total_skipped + 1)
+            set -q _flag_verbose
+            and printf_color cyan '%s:%d: [skip] %s\n' \
+                $input_file $current_command_line_number $current_command
+
+        else if test "$output" = "$expected"
             # OK
             set -q _flag_verbose
             and printf_color green '%s:%d: [ ok ] %s\n' \
@@ -196,16 +233,22 @@ if not set -q _flag_quiet
     # the final test results
     printf '%s: ' $input_file
 
+    if test $total_skipped -gt 0
+        set skipped_stats ", $total_skipped skipped"
+    end
+
     if test $test_number -eq 0
         echo 'No tests found'
     else
         if test $total_failed -eq 0
             printf_color green 'OK (%d tests passed%s)\n' \
-                $test_number
+                (math $test_number - $total_skipped) \
+                $skipped_stats
         else
             printf_color red 'FAILED (%d tests passed, %d failed%s)\n' \
-                (math $test_number - $total_failed) \
-                $total_failed
+                (math $test_number - $total_failed - $total_skipped) \
+                $total_failed \
+                $skipped_stats
         end
     end
 end
