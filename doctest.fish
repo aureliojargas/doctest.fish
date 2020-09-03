@@ -8,7 +8,8 @@ set use_color 0
 set debug_level 0
 
 # Parse command line arguments
-argparse \
+argparse --exclusive 'v,q' \
+    'v/verbose' \
     'q/quiet' \
     'd-debug' \
     'c-color=' \
@@ -146,8 +147,8 @@ for line in (cat $input_file) ''
 
         if test "$output" = "$expected"
             # OK
-            set -q _flag_quiet
-            or printf_color green '%s:%d: [ ok ] %s\n' \
+            set -q _flag_verbose
+            and printf_color green '%s:%d: [ ok ] %s\n' \
                 $input_file $current_command_line_number $current_command
 
         else

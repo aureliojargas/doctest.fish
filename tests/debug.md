@@ -15,19 +15,16 @@ When using the debug mode, extra messages are shown in specific points during th
     Line 4: OUTPUT [0]
     Line 5: ? [    > false; echo $status]
     Line 5: COMMAND [false; echo $status]
-    tests/status.md:3: [ ok ] true; echo $status
     Line 6: ? [    1]
     Line 6: OUTPUT [1]
     Line 7: ? [    > echo "command output and status"; echo $status]
     Line 7: COMMAND [echo "command output and status"; echo $status]
-    tests/status.md:5: [ ok ] false; echo $status
     Line 8: ? [    command output and status]
     Line 8: OUTPUT [command output and status]
     Line 9: ? [    0]
     Line 9: OUTPUT [0]
     Line 10: ? []
     Line 10: OTHER []
-    tests/status.md:7: [ ok ] echo "command output and status"; echo $status
     Line 11: ? [Using status in a different command line will not work. Note how it is reset back to zero:]
     Line 11: OTHER [Using status in a different command line will not work. Note how it is reset back to zero:]
     Line 12: ? []
@@ -36,10 +33,8 @@ When using the debug mode, extra messages are shown in specific points during th
     Line 13: COMMAND [false]
     Line 14: ? [    > echo $status  # DOES NOT WORK]
     Line 14: COMMAND [echo $status  # DOES NOT WORK]
-    tests/status.md:13: [ ok ] false
     Line 15: ? [    0]
     Line 15: OUTPUT [0]
     Line 16: ? []
     Line 16: OTHER []
-    tests/status.md:14: [ ok ] echo $status  # DOES NOT WORK
     tests/status.md: OK (5 tests passed)
