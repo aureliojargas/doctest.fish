@@ -9,32 +9,6 @@ set debug_level 0
 set verbose 0
 set quiet 0
 
-# Parse command line arguments
-argparse --exclusive 'v,q' \
-    'v/verbose' \
-    'q/quiet' \
-    'd-debug' \
-    'x-prefix=' \
-    'p-prompt=' \
-    'c-color=' \
-    -- $argv
-or exit 1
-set debug_level (count $_flag_debug)
-set -q _flag_prefix; and set prefix $_flag_prefix
-set -q _flag_prompt; and set prompt $_flag_prompt
-set -q _flag_color; and set color_mode $_flag_color
-set -q _flag_verbose; and set verbose 1
-set -q _flag_quiet; and set quiet 1
-set input_file $argv[1]
-
-# This will be the main identifier for commands
-set command_id $prefix$prompt
-set command_id_trimmed (string replace --regex ' +$' '' -- $command_id)
-
-# Pre-compute lengths to be used inside the main loop
-set prefix_length (string length -- $prefix)
-set command_id_length (string length -- $command_id)
-
 function printf_color # color template arguments
     test $use_color -eq 1; and set_color $argv[1]
     printf $argv[2..-1]
@@ -52,12 +26,6 @@ function debug -a color id line message
     and printf_color $color 'Line %d: %s [%s]\n' $line $id $message
 end
 
-function validate_input_file -a path
-    test -n "$path"; or error 'no test file informed'
-    test -d "$path"; and error "input file is a directory: $path"
-    test -r "$path"; or error "cannot read input file: $path"
-end
-
 function starts_with -a pattern string
     test -z "$pattern"; and return 0 # empty pattern always matches
     test -z "$string"; and return 1 # empty string never matches
@@ -73,23 +41,64 @@ function show_diff
     sed '1 { /^--- / { N; /\n+++ /d; }; }' # no ---/+++ headers
 end
 
-# Will we use colors in the output?
-switch $color_mode
-    case auto
-        not test -t 1 # status=0 when stdout is not a terminal
-        set use_color $status
-    case never no
-        set use_color 0
-    case always yes
-        set use_color 1
-    case '*'
-        error "Invalid --color mode '$color_mode'. Use: auto, always or never."
+function process_cmdline_arguments
+    argparse --exclusive 'v,q' \
+        'v/verbose' \
+        'q/quiet' \
+        'd-debug' \
+        'x-prefix=' \
+        'p-prompt=' \
+        'c-color=' \
+        -- $argv
+    or exit 1
+    set debug_level (count $_flag_debug)
+    set -q _flag_prefix; and set prefix $_flag_prefix
+    set -q _flag_prompt; and set prompt $_flag_prompt
+    set -q _flag_color; and set color_mode $_flag_color
+    set -q _flag_verbose; and set verbose 1
+    set -q _flag_quiet; and set quiet 1
+    set --global input_file $argv[1]
 end
 
-test -n "$prompt"
-or error 'The prompt string cannot be empty, set it via --prompt'
+function setup_colors -a mode
+    switch $mode
+        case auto
+            not test -t 1 # status=0 when stdout is not a terminal
+            set use_color $status
+        case never no
+            set use_color 0
+        case always yes
+            set use_color 1
+        case '*'
+            error "Invalid --color mode '$mode'. Use: auto, always or never."
+    end
+end
 
+function validate_prompt -a prompt
+    test -n "$prompt"
+    or error 'The prompt string cannot be empty, set it via --prompt'
+end
+
+function validate_input_file -a path
+    test -n "$path"; or error 'no test file informed'
+    test -d "$path"; and error "input file is a directory: $path"
+    test -r "$path"; or error "cannot read input file: $path"
+end
+
+#-----------------------------------------------------------------------
+
+process_cmdline_arguments $argv
+setup_colors $color_mode
+validate_prompt $prompt
 validate_input_file $input_file
+
+# This will be the main identifier for commands
+set command_id $prefix$prompt
+set command_id_trimmed (string replace --regex ' +$' '' -- $command_id)
+
+# Pre-compute lengths to be used inside the main loop
+set prefix_length (string length -- $prefix)
+set command_id_length (string length -- $command_id)
 
 set line_number 0
 set test_number 0
