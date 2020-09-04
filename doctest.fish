@@ -6,6 +6,8 @@ set prompt '> '
 set color_mode auto
 set use_color 0
 set debug_level 0
+set verbose 0
+set quiet 0
 
 # Parse command line arguments
 argparse --exclusive 'v,q' \
@@ -21,6 +23,8 @@ set debug_level (count $_flag_debug)
 set -q _flag_prefix; and set prefix $_flag_prefix
 set -q _flag_prompt; and set prompt $_flag_prompt
 set -q _flag_color; and set color_mode $_flag_color
+set -q _flag_verbose; and set verbose 1
+set -q _flag_quiet; and set quiet 1
 set input_file $argv[1]
 
 # This will be the main identifier for commands
@@ -79,7 +83,7 @@ switch $color_mode
     case always yes
         set use_color 1
     case '*'
-        error "Invalid --color mode '$_flag_color'. Use: auto, always or never."
+        error "Invalid --color mode '$color_mode'. Use: auto, always or never."
 end
 
 test -n "$prompt"
@@ -154,14 +158,14 @@ for line in (cat $input_file) ''
 
         if test "$output" = "$expected"
             # OK
-            set -q _flag_verbose
+            test $verbose -eq 1
             and printf_color green '%s:%d: [ ok ] %s\n' \
                 $input_file $current_command_line_number $current_command
 
         else
             # FAIL
             set total_failed (math $total_failed + 1)
-            if not set -q _flag_quiet
+            if test $quiet -eq 0
                 echo
                 printf_color red '%s:%d: [fail] %s\n' \
                     $input_file $current_command_line_number $current_command
@@ -186,7 +190,7 @@ for line in (cat $input_file) ''
     end
 end
 
-if not set -q _flag_quiet
+if test $quiet -eq 0
     # Examples of output:
     # tests/foo.md: No tests found
     # tests/foo.md: OK (7 tests passed)
