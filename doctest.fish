@@ -202,14 +202,12 @@ for line in (cat $input_file) ''
     end
 end
 
+# Show results (when not quiet)
+# Examples of output:
+#   tests/foo.md: No tests found
+#   tests/foo.md: OK (7 tests passed)
+#   tests/foo.md: FAILED (4 tests passed, 3 failed)
 if test $quiet -eq 0
-    # Examples of output:
-    # tests/foo.md: No tests found
-    # tests/foo.md: OK (7 tests passed)
-    # tests/foo.md: FAIL (4 tests passed, 3 failed)
-
-    # The filename is always shown in the line beginning, regardless of
-    # the final test results
     printf '%s: ' $input_file
 
     if test $test_number -eq 0
