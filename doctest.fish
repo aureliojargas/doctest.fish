@@ -63,12 +63,15 @@ end
 function setup_colors -a mode
     switch $mode
         case auto
-            not test -t 1 # status=0 when stdout is not a terminal
-            set use_color $status
-        case never no
-            set use_color 0
+            if isatty stdout
+                set use_color 1
+            else
+                set use_color 0
+            end
         case always yes
             set use_color 1
+        case never no
+            set use_color 0
         case '*'
             error "Invalid --color mode '$mode'. Use: auto, always or never."
     end
