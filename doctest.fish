@@ -1,4 +1,8 @@
 #!/usr/bin/env fish
+# doctest.fish, by Aurelio Jargas
+
+set my_name doctest.fish
+set my_url https://github.com/aureliojargas/doctest.fish
 
 # Defaults
 set prefix '    '
@@ -45,22 +49,38 @@ function show_diff
     sed '1 { /^--- / { N; /\n+++ /d; }; }' # no ---/+++ headers
 end
 
+function show_help
+    echo "usage: $my_name [options] <file ...>"
+    echo
+    echo 'options:'
+    echo '      --color WHEN      use colors or not? auto*, always, never'
+    echo '      --prefix PREFIX   set the command line prefix (default: 4 spaces)'
+    echo '      --prompt PROMPT   set the prompt string (default: "> ")'
+    echo '  -q, --quiet           no output is shown (not even errors)'
+    echo '  -v, --verbose         show information about every executed test'
+    echo '  -h, --help            show this help message and exit'
+    echo
+    echo "See also: $my_url"
+end
+
 function process_cmdline_arguments
     argparse --exclusive 'v,q' \
-        'v/verbose' \
-        'q/quiet' \
+        'c-color=' \
         'd-debug' \
         'x-prefix=' \
         'p-prompt=' \
-        'c-color=' \
+        'q/quiet' \
+        'v/verbose' \
+        'h/help' \
         -- $argv
     or exit 1
-    set debug_level (count $_flag_debug)
+    set debug_level (count $_flag_debug) # undocumented dev option
+    set -q _flag_color; and set color_mode $_flag_color
     set -q _flag_prefix; and set prefix $_flag_prefix
     set -q _flag_prompt; and set prompt $_flag_prompt
-    set -q _flag_color; and set color_mode $_flag_color
-    set -q _flag_verbose; and set verbose 1
     set -q _flag_quiet; and set quiet 1
+    set -q _flag_verbose; and set verbose 1
+    set -q _flag_help; and show_help; and exit 0
     set --global input_files $argv
 end
 
