@@ -1,2 +1,2 @@
 test:
-	fish -c 'for file in tests/*.md; ./doctest.fish $$file; end'
+	./doctest.fish tests/*.md

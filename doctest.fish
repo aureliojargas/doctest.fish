@@ -9,6 +9,10 @@ set debug_level 0
 set verbose 0
 set quiet 0
 
+# Global counters for aggregating results from all input files
+set total_tests 0
+set total_failed 0
+
 function printf_color # color template arguments
     test $use_color -eq 1; and set_color $argv[1]
     printf $argv[2..-1]
@@ -57,7 +61,7 @@ function process_cmdline_arguments
     set -q _flag_color; and set color_mode $_flag_color
     set -q _flag_verbose; and set verbose 1
     set -q _flag_quiet; and set quiet 1
-    set --global input_file $argv[1]
+    set --global input_files $argv
 end
 
 function setup_colors -a mode
@@ -82,16 +86,20 @@ function validate_prompt -a prompt
     or error 'The prompt string cannot be empty, set it via --prompt'
 end
 
-function validate_input_file -a path
-    test -n "$path"; or error 'no test file informed'
-    test -d "$path"; and error "input file is a directory: $path"
-    test -r "$path"; or error "cannot read input file: $path"
+function validate_input_files -a paths
+    test (count $paths) -eq 0
+    and error 'no test file informed'
+
+    for path in $paths
+        test -d "$path"; and error "input file is a directory: $path"
+        test -r "$path"; or error "cannot read input file: $path"
+    end
 end
 
 function test_input_file -a input_file
     set line_number 0
     set test_number 0
-    set --global total_failed 0
+    set failed_tests 0
 
     # Adding extra empty "line" to the end of the input to make the
     # algorithm simpler. Then we always have a last-line trigger for the
@@ -146,7 +154,8 @@ function test_input_file -a input_file
 
         # Run the current test
         if test $run_test -eq 1
-            set test_number (math $test_number + 1)
+            set test_number (math $test_number + 1) # this file
+            set total_tests (math $total_tests + 1) # global
 
             # These must be global, see comments in show_diff
             set --global expected $current_output
@@ -164,7 +173,8 @@ function test_input_file -a input_file
 
             else
                 # FAIL
-                set total_failed (math $total_failed + 1)
+                set failed_tests (math $failed_tests + 1) # this file
+                set total_failed (math $total_failed + 1) # global
                 if test $quiet -eq 0
                     echo
                     printf_color red '%s:%d: [fail] %s\n' \
@@ -201,13 +211,13 @@ function test_input_file -a input_file
         if test $test_number -eq 0
             echo 'No tests found'
         else
-            if test $total_failed -eq 0
+            if test $failed_tests -eq 0
                 printf '%d tests %s\n' \
                     $test_number \
                     (printf_color green PASSED)
             else
                 printf '%d of %d tests %s\n' \
-                    $total_failed \
+                    $failed_tests \
                     $test_number \
                     (printf_color red FAILED)
             end
@@ -220,17 +230,46 @@ end
 process_cmdline_arguments $argv
 setup_colors $color_mode
 validate_prompt $prompt
-validate_input_file $input_file
+validate_input_files $input_files
 
 # This will be the main identifier for commands
 set command_id $prefix$prompt
 set command_id_trimmed (string replace --regex ' +$' '' -- $command_id)
 
-# Pre-compute lengths to be used inside the main loop
+# Pre-compute lengths and counts
 set prefix_length (string length -- $prefix)
 set command_id_length (string length -- $command_id)
+set input_files_count (count $input_files)
 
-test_input_file $input_file
+# Run all the tests from all the input files
+for input_file in $input_files
+    test_input_file $input_file
+end
+
+# Show final total status when there are at least 2 input files
+# Examples of output:
+#   Summary: 14 input files, no tests were found (check --prefix and --prompt)
+#   Summary: 14 input files, 56 tests passed
+#   Summary: 14 input files, 3 of 53 tests failed
+if test $quiet -eq 0; and test $input_files_count -gt 1
+
+    echo # visually separate from previous block
+
+    echo -n "Summary: $input_files_count input files, "
+
+    if test $total_tests -eq 0
+        echo 'no tests were found (check --prefix and --prompt)'
+    else if test $total_failed -eq 0
+        printf "%d tests %s\n" \
+            $total_tests \
+            (printf_color green passed)
+    else
+        printf "%d of %d tests %s\n" \
+            $total_failed \
+            $total_tests \
+            (printf_color red failed)
+    end
+end
 
 # Script exit code will be zero only when there are no failed tests
 test $total_failed -eq 0
