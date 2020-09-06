@@ -2,6 +2,7 @@
 # doctest.fish, by Aurelio Jargas
 
 set my_name doctest.fish
+set my_version dev
 set my_url https://github.com/aureliojargas/doctest.fish
 
 # Defaults
@@ -49,6 +50,10 @@ function show_diff
     sed '1 { /^--- / { N; /\n+++ /d; }; }' # no ---/+++ headers
 end
 
+function show_version
+    echo "$my_name $my_version"
+end
+
 function show_help
     echo "usage: $my_name [options] <file ...>"
     echo
@@ -58,6 +63,7 @@ function show_help
     echo '      --prompt PROMPT   set the prompt string (default: "> ")'
     echo '  -q, --quiet           no output is shown (not even errors)'
     echo '  -v, --verbose         show information about every executed test'
+    echo '  -V, --version         show the program version and exit'
     echo '  -h, --help            show this help message and exit'
     echo
     echo "See also: $my_url"
@@ -71,6 +77,7 @@ function process_cmdline_arguments
         'p-prompt=' \
         'q/quiet' \
         'v/verbose' \
+        'V/version' \
         'h/help' \
         -- $argv
     or exit 1
@@ -80,6 +87,7 @@ function process_cmdline_arguments
     set -q _flag_prompt; and set prompt $_flag_prompt
     set -q _flag_quiet; and set quiet 1
     set -q _flag_verbose; and set verbose 1
+    set -q _flag_version; and show_version; and exit 0
     set -q _flag_help; and show_help; and exit 0
     set --global input_files $argv
 end
