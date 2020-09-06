@@ -193,8 +193,8 @@ function test_input_file -a input_file
     # Show results (when not quiet)
     # Examples of output:
     #   tests/foo.md: No tests found
-    #   tests/foo.md: OK (7 tests passed)
-    #   tests/foo.md: FAILED (4 tests passed, 3 failed)
+    #   tests/foo.md: 7 tests PASSED
+    #   tests/foo.md: 3 of 7 tests FAILED
     if test $quiet -eq 0
         printf '%s: ' $input_file
 
@@ -202,12 +202,14 @@ function test_input_file -a input_file
             echo 'No tests found'
         else
             if test $total_failed -eq 0
-                printf_color green 'OK (%d tests passed%s)\n' \
-                    $test_number
+                printf '%d tests %s\n' \
+                    $test_number \
+                    (printf_color green PASSED)
             else
-                printf_color red 'FAILED (%d tests passed, %d failed%s)\n' \
-                    (math $test_number - $total_failed) \
-                    $total_failed
+                printf '%d of %d tests %s\n' \
+                    $total_failed \
+                    $test_number \
+                    (printf_color red FAILED)
             end
         end
     end

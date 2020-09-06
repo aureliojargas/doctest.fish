@@ -37,4 +37,4 @@ When using the debug mode, extra messages are shown in specific points during th
     Line 15: OUTPUT [0]
     Line 16: ? []
     Line 16: OTHER []
-    tests/status.md: OK (5 tests passed)
+    tests/status.md: 5 tests PASSED

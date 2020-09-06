@@ -24,6 +24,6 @@ When using the verbose mode, extra messages are shown, listing all the executed 
     -xxx
     +fail-6
     .
-    tests/include/ok-skip-fail.md: FAILED (3 tests passed, 3 failed)
+    tests/include/ok-skip-fail.md: 3 of 6 tests FAILED
 
 > Note that `sed` was used to avoid having blank lines in the output, adding a dot to them. This is to avoid broken tests due the text editor's automatic removal of trailing spaces, that would remove the 4-space prefix from those blank output lines.

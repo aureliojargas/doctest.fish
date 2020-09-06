@@ -13,9 +13,9 @@ When using a custom prefix that is not found in the test file, it's ok:
 Now set the tab as the prefix. Only one test is using that prefix:
 
     > ./doctest.fish --color no --prefix \t tests/include/custom-prefix.md
-    tests/include/custom-prefix.md: OK (1 tests passed)
+    tests/include/custom-prefix.md: 1 tests PASSED
 
 Empty prefix is also valid for those cases when there's no indentation at all. For example, Markdown fenced blocks.
 
     > ./doctest.fish --color no --prefix '' tests/include/custom-prefix.md
-    tests/include/custom-prefix.md: OK (1 tests passed)
+    tests/include/custom-prefix.md: 1 tests PASSED
