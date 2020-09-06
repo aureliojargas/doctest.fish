@@ -20,12 +20,14 @@ Since we're running the automated tests, the output is not a terminal, so `--col
 
 Now forcing colored output with `--color always`.
 
-    > ./doctest.fish --color always tests/include/one-ok.md 2>&1 | tr -d '\033'
-    tests/include/one-ok.md: 1 tests [32mPASSED(B[m
-    > ./doctest.fish --color yes tests/include/one-ok.md 2>&1 | tr -d '\033'
-    tests/include/one-ok.md: 1 tests [32mPASSED(B[m
+    > ./doctest.fish --color always tests/include/one-ok.md 2>&1 | tr -d '\033' | sed 's/(B//'
+    tests/include/one-ok.md: 1 tests [32mPASSED[m
+    > ./doctest.fish --color yes tests/include/one-ok.md 2>&1 | tr -d '\033' | sed 's/(B//'
+    tests/include/one-ok.md: 1 tests [32mPASSED[m
 
 > Note that `tr -d '\033'` was used to remove the invisible escape char from the output. This breaks the colored output, but that's ok, we only want to match plain text here and check if the colors were used or not.
+
+> Note also that an extra `sed` command is used to remove an extra `(B` that appears before `[m` in some terminals (i.e.: `xterm-256color`).
 
 Using and invalid value for the `--color` option will produced a non-colored error message:
 
