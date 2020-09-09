@@ -42,14 +42,6 @@ function starts_with -a pattern string
     test "$string_prefix" = "$pattern"
 end
 
-function show_diff
-    # Getting $expected and $output from the outer scope because I
-    # cannot pass two lists to a function (there's the automatic list
-    # conversion for multiline strings)
-    diff -u (printf '%s\n' $expected | psub) (printf '%s\n' $output | psub) |
-    sed '1 { /^--- / { N; /\n+++ /d; }; }' # no ---/+++ headers
-end
-
 function show_version
     echo "$my_name $my_version"
 end
@@ -124,10 +116,21 @@ function validate_input_files -a paths
     end
 end
 
-function test_input_file -a input_file
-    set line_number 0
-    set test_number 0
-    set failed_tests 0
+function parse_input_file -a input_file
+    set --local line_number 0
+    set --local pending_output 0
+
+    # The results will be saved in the $parsed_data list. The format
+    # `line_number:type:contents` is used because fish does not
+    # support multidimensional lists. Example:
+    #    3:cmd:true; echo $status
+    #    4:out:0
+    #    5:cmd:false; echo $status
+    #    6:out:1
+    #    7:cmd:echo "command output and status"; echo $status
+    #    8:out:command output and status
+    #    9:out:0
+    set --global parsed_data
 
     # Adding extra empty "line" to the end of the input to make the
     # algorithm simpler. Then we always have a last-line trigger for the
@@ -136,119 +139,120 @@ function test_input_file -a input_file
     for line in (cat $input_file) ''
 
         set line_number (math $line_number + 1)
-        set run_test 0
-
         debug yellow '?' $line_number $line
 
-        # Parse the current input line
         if starts_with $command_id $line
             # Found a command line
+            set --local cmd (string sub -s (math $command_id_length + 1) -- $line)
+            set --append parsed_data "$line_number:cmd:$cmd"
+            debug blue COMMAND $line_number $cmd
+            set pending_output 1
 
-            set next_command (string sub -s (math $command_id_length + 1) -- $line)
-            set next_command_line_number $line_number
-
-            debug blue COMMAND $line_number $next_command
-
-            if set -q current_command
-                set run_test 1
-            else
-                set current_command $next_command
-                set current_command_line_number $line_number
-                set --erase next_command
-                set --erase next_command_line_number
-            end
-
-        else if test "$line" = "$command_id" || test "$line" = "$command_id_trimmed"
+        else if test "$line" = "$command_id"; or test "$line" = "$command_id_trimmed"
             # Line has prompt, but it is an empty command
+            debug blue EMPTY $line_number ''
+            set pending_output 0
 
-            set -q current_command && set run_test 1
-
-        else if test -n "$current_command$next_command" && starts_with $prefix $line
+        else if test "$pending_output" -eq 1; and starts_with $prefix $line
             # Line has the prefix and is not a command, so this is the
             # command output
-
-            set output_line (string sub -s (math $prefix_length + 1) -- $line)
-            set --append current_output $output_line
-
-            debug cyan OUTPUT $line_number $output_line
+            set --local out (string sub -s (math $prefix_length + 1) -- $line)
+            set --append parsed_data "$line_number:out:$out"
+            debug cyan OUTPUT $line_number $out
 
         else
             # Line is not a command neither command output
-
-            set -q current_command && set run_test 1
-
             debug magenta OTHER $line_number $line
+            set pending_output 0
         end
+    end
+end
 
-        # Run the current test
-        if test $run_test -eq 1
-            set test_number (math $test_number + 1) # this file
-            set total_tests (math $total_tests + 1) # global
+function test_input_file -a input_file
+    set --local test_number 0
+    set --local failed_tests 0
 
-            # These must be global, see comments in show_diff
-            set --global expected $current_output
-            set --global output (eval $current_command 2>&1)
+    # Adding extra empty "command" after $parsed_data to make the
+    # algorithm simpler. Then we always have a last-command trigger for
+    # the last pending command. Otherwise we would have to handle the
+    # last command after the loop.
+    for data in $parsed_data '0:cmd:'
+        string split --max 2 : $data | read --line line type text
 
-            # ^ Here (eval) is where the command is really executed.
-            # Note: eval cannot be inside a function due to scope rules. A
-            #       defined foo var should be accessible by the next tests.
+        if test "$type" = cmd
 
-            if test "$output" = "$expected"
-                # OK
-                test $verbose -eq 1
-                and printf_color green '%s:%d: [ ok ] %s\n' \
-                    $input_file $current_command_line_number $current_command
+            # There's a pending previous command, test it now
+            if test -n "$command"
+                set test_number (math $test_number + 1) # this file
+                set total_tests (math $total_tests + 1) # global
 
-            else
-                # FAIL
-                set failed_tests (math $failed_tests + 1) # this file
-                set total_failed (math $total_failed + 1) # global
-                if test $quiet -eq 0
-                    echo
-                    printf_color red '%s:%d: [fail] %s\n' \
-                        $input_file $current_command_line_number $current_command
-                    show_diff (string collect -- $expected) (string collect -- $output)
-                    echo
+                # Important: eval must be in the same execution scope
+                # for all the tests in a single file. A var $foo defined
+                # in a command should be visible to the next commands
+                # from the same file, and it should not be visible for
+                # the commands on the next file.
+                set output (eval $command 2>&1)
+
+                if test "$output" = "$expected" # OK
+                    test $verbose -eq 1
+                    and printf_color green '%s:%d: [ ok ] %s\n' \
+                        $input_file $line_number $command
+
+                else # FAIL
+                    set failed_tests (math $failed_tests + 1) # this file
+                    set total_failed (math $total_failed + 1) # global
+
+                    if test $quiet -eq 0
+                        echo
+                        printf_color red '%s:%d: [fail] %s\n' \
+                            $input_file $line_number $command
+
+                        # Show a nice diff
+                        diff -u \
+                            (printf '%s\n' $expected | psub) \
+                            (printf '%s\n' $output | psub) |
+                        sed '1,2 d' # delete ---/+++ headers
+                        echo
+                    end
                 end
             end
 
-            # Clear data from the already executed test
-            set --erase current_command
-            set --erase current_command_line_number
-            set --erase current_output
+            # Setup new command data
+            set line_number $line
+            set command $text
+            set expected
 
-            # If there's a pending command, make it the current one
-            # (it will be tested only when the next trigger appears)
-            if set -q next_command
-                set current_command $next_command
-                set current_command_line_number $next_command_line_number
-                set --erase next_command
-                set --erase next_command_line_number
-            end
+        else if test "$type" = out
+            set --append expected $text
+
+        else
+            error "Unknown data type: $type"
         end
     end
+    show_file_summary $input_file $test_number $failed_tests
+end
 
-    # Show results (when not quiet)
+function show_file_summary -a file tested failed
+    test $quiet -eq 1; and return 0
+
     # Examples of output:
     #   tests/foo.md: No tests found
     #   tests/foo.md: 7 tests PASSED
     #   tests/foo.md: 3 of 7 tests FAILED
-    if test $quiet -eq 0
-        printf '%s: ' $input_file
+    printf '%s: ' $file
 
-        if test $test_number -eq 0
-            echo 'No tests found'
+    if test $tested -eq 0
+        echo 'No tests found'
+    else
+        if test $failed -eq 0
+            printf '%d tests %s\n' \
+                $tested \
+                (printf_color green PASSED)
         else
-            if test $failed_tests -eq 0
-                printf '%d tests %s\n' \
-                    $test_number \
-                    (printf_color green PASSED)
-            else
-                printf '%d of %d tests %s\n' \
-                    $failed_tests \
-                    $test_number \
-                    (printf_color red FAILED)
-            end
+            printf '%d of %d tests %s\n' \
+                $failed \
+                $tested \
+                (printf_color red FAILED)
         end
     end
 end
@@ -271,7 +275,8 @@ set input_files_count (count $input_files)
 
 # Run all the tests from all the input files
 for input_file in $input_files
-    test_input_file $input_file
+    parse_input_file $input_file # set $parsed_data
+    test_input_file $input_file # use $parsed_data
 end
 
 # Show final total status when there are at least 2 input files
