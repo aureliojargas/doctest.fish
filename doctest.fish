@@ -177,6 +177,8 @@ function test_input_file -a input_file
     # the last pending command. Otherwise we would have to handle the
     # last command after the loop.
     for data in $parsed_data '0:cmd:'
+        test $debug_level -gt 0; and printf_color magenta '[%s]\n' $data
+
         string split --max 2 : $data | read --line line type text
 
         if test "$type" = cmd

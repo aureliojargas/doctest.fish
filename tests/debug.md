@@ -4,7 +4,7 @@ When using the debug mode, extra messages are shown in specific points during th
 
 > For this one we will run the tests from `tests/status.md`, which should be a somewhat stable file (won't change too much in the future) and have diverse enough lines (command, output, other) to produce a rich debug result.
 
-    > ./doctest.fish --debug tests/status.md
+    > ./doctest.fish --debug --verbose tests/status.md
     Line 1: ? [To test the exit status for specific commands, just show `$status` after the commands, **in the same command line**.]
     Line 1: OTHER [To test the exit status for specific commands, just show `$status` after the commands, **in the same command line**.]
     Line 2: ? []
@@ -37,4 +37,20 @@ When using the debug mode, extra messages are shown in specific points during th
     Line 15: OUTPUT [0]
     Line 16: ? []
     Line 16: OTHER []
+    [3:cmd:true; echo $status]
+    [4:out:0]
+    [5:cmd:false; echo $status]
+    tests/status.md:3: [ ok ] true; echo $status
+    [6:out:1]
+    [7:cmd:echo "command output and status"; echo $status]
+    tests/status.md:5: [ ok ] false; echo $status
+    [8:out:command output and status]
+    [9:out:0]
+    [13:cmd:false]
+    tests/status.md:7: [ ok ] echo "command output and status"; echo $status
+    [14:cmd:echo $status  # DOES NOT WORK]
+    tests/status.md:13: [ ok ] false
+    [15:out:0]
+    [0:cmd:]
+    tests/status.md:14: [ ok ] echo $status  # DOES NOT WORK
     tests/status.md: 5 tests PASSED
