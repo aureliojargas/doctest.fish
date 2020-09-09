@@ -13,6 +13,7 @@ set use_color 0
 set debug_level 0
 set verbose 0
 set quiet 0
+set yaml 0
 
 # Global counters for aggregating results from all input files
 set total_tests 0
@@ -56,6 +57,7 @@ function show_help
     echo '  -q, --quiet           no output is shown (not even errors)'
     echo '  -v, --verbose         show information about every executed test'
     echo '  -V, --version         show the program version and exit'
+    echo '      --yaml            show all test cases as YAML (no test is run)'
     echo '  -h, --help            show this help message and exit'
     echo
     echo "See also: $my_url"
@@ -70,6 +72,7 @@ function process_cmdline_arguments
         'q/quiet' \
         'v/verbose' \
         'V/version' \
+        'y-yaml' \
         'h/help' \
         -- $argv
     or exit 1
@@ -80,6 +83,7 @@ function process_cmdline_arguments
     set -q _flag_quiet; and set quiet 1
     set -q _flag_verbose; and set verbose 1
     set -q _flag_version; and show_version; and exit 0
+    set -q _flag_yaml; and set yaml 1
     set -q _flag_help; and show_help; and exit 0
     set --global input_files $argv
 end
@@ -260,6 +264,39 @@ function show_file_summary -a file tested failed
 end
 
 #-----------------------------------------------------------------------
+# YAML
+
+function yaml_string -a text
+    # https://www.yaml.info/learn/quote.html#single
+    # foo'bar => 'foo''bar'
+    printf "'%s'" (string replace --all "'" "''" $text)
+end
+
+function yaml_root
+    printf '%s: %s\n' prefix (yaml_string $prefix)
+    printf '%s: %s\n' prompt (yaml_string $prompt)
+    printf '%s: %s\n' version (yaml_string (show_version))
+    printf '%s:\n' files
+end
+
+function yaml_file_data # file data_list
+    printf '  - path: %s\n' (yaml_string $argv[1])
+    printf '    tests:\n'
+
+    for data in $argv[2..-1]
+        string split --max 2 : $data | read --line line type text
+
+        if test "$type" = cmd
+            printf '      - line: %d\n' $line
+            printf '        cmd: %s\n' (yaml_string $text)
+            printf '        out:\n'
+        else
+            printf '          - %s\n' (yaml_string $text)
+        end
+    end
+end
+
+#-----------------------------------------------------------------------
 
 process_cmdline_arguments $argv
 setup_colors $color_mode
@@ -274,6 +311,16 @@ set command_id_trimmed (string replace --regex ' +$' '' -- $command_id)
 set prefix_length (string length -- $prefix)
 set command_id_length (string length -- $command_id)
 set input_files_count (count $input_files)
+
+# Maybe we only need to print the YAML?
+if test "$yaml" -eq 1
+    yaml_root
+    for input_file in $input_files
+        parse_input_file $input_file # set $parsed_data
+        yaml_file_data $input_file $parsed_data
+    end
+    exit 0 # we're done
+end
 
 # Run all the tests from all the input files
 for input_file in $input_files
