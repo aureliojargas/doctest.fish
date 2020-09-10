@@ -4,12 +4,12 @@ When using `--yaml`, instead of running the tests, all their data is printed to 
 
 ## Single input file
 
-    > ./doctest.fish --yaml tests/include/one-ok.md
+    > ./doctest.fish --yaml docs/include/one-ok.md
     prefix: '    '
     prompt: '> '
     version: 'doctest.fish dev'
     files:
-      - path: 'tests/include/one-ok.md'
+      - path: 'docs/include/one-ok.md'
         tests:
           - line: 1
             cmd: 'echo foo'
@@ -18,12 +18,12 @@ When using `--yaml`, instead of running the tests, all their data is printed to 
 
 ## Multiple input files
 
-    > ./doctest.fish --yaml tests/status.md tests/include/one-{ok,fail}.md
+    > ./doctest.fish --yaml docs/status.md docs/include/one-{ok,fail}.md
     prefix: '    '
     prompt: '> '
     version: 'doctest.fish dev'
     files:
-      - path: 'tests/status.md'
+      - path: 'docs/status.md'
         tests:
           - line: 3
             cmd: 'true; echo $status'
@@ -45,13 +45,13 @@ When using `--yaml`, instead of running the tests, all their data is printed to 
             cmd: 'echo $status  # DOES NOT WORK'
             out:
               - '0'
-      - path: 'tests/include/one-ok.md'
+      - path: 'docs/include/one-ok.md'
         tests:
           - line: 1
             cmd: 'echo foo'
             out:
               - 'foo'
-      - path: 'tests/include/one-fail.md'
+      - path: 'docs/include/one-fail.md'
         tests:
           - line: 1
             cmd: 'echo foo'

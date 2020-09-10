@@ -15,7 +15,7 @@ Undefined variables are not a problem.
     > echo -n $x
     >
 
-Variables defined in one test file should not spillover to other test files. See `tests/variables-2.md`.
+Variables defined in one test file should not spillover to other test files. See `docs/variables-2.md`.
 
     > set var_from_variables_1 here
     > echo $var_from_variables_1

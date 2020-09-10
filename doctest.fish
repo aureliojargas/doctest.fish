@@ -242,9 +242,9 @@ function show_file_summary -a file tested failed
     test $quiet -eq 1; and return 0
 
     # Examples of output:
-    #   tests/foo.md: No tests found
-    #   tests/foo.md: 7 tests PASSED
-    #   tests/foo.md: 3 of 7 tests FAILED
+    #   docs/foo.md: No tests found
+    #   docs/foo.md: 7 tests PASSED
+    #   docs/foo.md: 3 of 7 tests FAILED
     printf '%s: ' $file
 
     if test $tested -eq 0
