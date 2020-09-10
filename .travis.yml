@@ -1,0 +1,8 @@
+dist: focal
+language: bash
+addons:
+  apt:
+    packages:
+      - fish
+script:
+  - make test
