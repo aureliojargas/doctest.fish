@@ -17,13 +17,11 @@ When using the verbose mode, extra messages are shown, listing all the executed 
 
 Note that failed tests are always shown by default, even when not using the verbose mode:
 
-    > ./doctest.fish docs/include/one-fail.md | sed 's/^$/./'
-    .
+    > ./doctest.fish docs/include/one-fail.md
+    
     docs/include/one-fail.md:1: [fail] echo foo
     @@ -1 +1 @@
     -bar
     +foo
-    .
+    
     docs/include/one-fail.md: 1 of 1 tests FAILED
-
-> Note that `sed` was used to avoid having blank lines in the output, adding a dot to them. This is to avoid broken tests due the text editor's automatic removal of trailing spaces, that would remove the 4-space prefix from those blank output lines.
