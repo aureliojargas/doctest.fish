@@ -11,5 +11,5 @@ To test the exit status for specific commands, just show `$status` after the com
 Using status in a different command line will not work. Note how it is reset back to zero:
 
     > false
-    > echo $status  # DOES NOT WORK
+    > echo $status
     0

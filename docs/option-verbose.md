@@ -1,29 +1,29 @@
 # Option --verbose
 
-When using the verbose mode, extra messages are shown, listing all the executed tests.
+By default, only a single line with a summary message is shown for each tested file, when all the tests pass:
 
-    > ./doctest.fish -v docs/include/ok-fail.md | sed 's/^$/./'
-    docs/include/ok-fail.md:1: [ ok ] echo ok-1
-    docs/include/ok-fail.md:3: [ ok ] echo ok-2
+    > ./doctest.fish docs/status.md
+    docs/status.md: 5 tests PASSED
+
+When using the verbose mode, extra messages are shown, listing all the executed tests:
+
+    > ./doctest.fish --verbose docs/status.md
+    docs/status.md:3: [ ok ] true; echo $status
+    docs/status.md:5: [ ok ] false; echo $status
+    docs/status.md:7: [ ok ] echo "command output and status"; echo $status
+    docs/status.md:13: [ ok ] false
+    docs/status.md:14: [ ok ] echo $status
+    docs/status.md: 5 tests PASSED
+
+Note that failed tests are always shown by default, even when not using the verbose mode:
+
+    > ./doctest.fish docs/include/one-fail.md | sed 's/^$/./'
     .
-    docs/include/ok-fail.md:5: [fail] echo fail-3
+    docs/include/one-fail.md:1: [fail] echo foo
     @@ -1 +1 @@
-    -xxx
-    +fail-3
+    -bar
+    +foo
     .
-    docs/include/ok-fail.md:7: [ ok ] echo ok-4
-    .
-    docs/include/ok-fail.md:9: [fail] echo fail-5
-    @@ -1 +1 @@
-    -xxx
-    +fail-5
-    .
-    .
-    docs/include/ok-fail.md:11: [fail] echo fail-6
-    @@ -1 +1 @@
-    -xxx
-    +fail-6
-    .
-    docs/include/ok-fail.md: 3 of 6 tests FAILED
+    docs/include/one-fail.md: 1 of 1 tests FAILED
 
 > Note that `sed` was used to avoid having blank lines in the output, adding a dot to them. This is to avoid broken tests due the text editor's automatic removal of trailing spaces, that would remove the 4-space prefix from those blank output lines.

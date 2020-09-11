@@ -42,7 +42,7 @@ When using `--yaml`, instead of running the tests, all their data is printed to 
             cmd: 'false'
             out:
           - line: 14
-            cmd: 'echo $status  # DOES NOT WORK'
+            cmd: 'echo $status'
             out:
               - '0'
       - path: 'docs/include/one-ok.md'

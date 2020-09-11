@@ -31,8 +31,8 @@ When using the debug mode, extra messages are shown in specific points during th
     Line 12: OTHER []
     Line 13: ? [    > false]
     Line 13: COMMAND [false]
-    Line 14: ? [    > echo $status  # DOES NOT WORK]
-    Line 14: COMMAND [echo $status  # DOES NOT WORK]
+    Line 14: ? [    > echo $status]
+    Line 14: COMMAND [echo $status]
     Line 15: ? [    0]
     Line 15: OUTPUT [0]
     Line 16: ? []
@@ -48,9 +48,9 @@ When using the debug mode, extra messages are shown in specific points during th
     [9:out:0]
     [13:cmd:false]
     docs/status.md:7: [ ok ] echo "command output and status"; echo $status
-    [14:cmd:echo $status  # DOES NOT WORK]
+    [14:cmd:echo $status]
     docs/status.md:13: [ ok ] false
     [15:out:0]
     [0:cmd:]
-    docs/status.md:14: [ ok ] echo $status  # DOES NOT WORK
+    docs/status.md:14: [ ok ] echo $status
     docs/status.md: 5 tests PASSED
