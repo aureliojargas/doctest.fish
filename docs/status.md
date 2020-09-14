@@ -1,3 +1,5 @@
+# Exit status
+
 To test the exit status for specific commands, just show `$status` after the commands, **in the same command line**.
 
     > true; echo $status

@@ -1,3 +1,4 @@
-A file with no tests.
+# A file with no tests
 
-This is not considered an error, `$status` will be zero.
+- This is not considered an error
+- `$status` will be zero

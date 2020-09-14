@@ -1,4 +1,6 @@
-A variable defined in one test should be available in the next tests.
+# Variables (part 1)
+
+A variable defined in one test should be available for the next tests.
 
     > set x 1
     > echo $x

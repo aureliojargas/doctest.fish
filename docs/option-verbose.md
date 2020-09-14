@@ -1,4 +1,4 @@
-# Option --verbose
+# Option --verbose (or -v)
 
 By default, only a single line with a summary message is shown for each tested file, when all the tests pass:
 
@@ -8,11 +8,11 @@ By default, only a single line with a summary message is shown for each tested f
 When using the verbose mode, extra messages are shown, listing all the executed tests:
 
     > ./doctest.fish --verbose docs/status.md
-    docs/status.md:3: [ ok ] true; echo $status
-    docs/status.md:5: [ ok ] false; echo $status
-    docs/status.md:7: [ ok ] echo "command output and status"; echo $status
-    docs/status.md:13: [ ok ] false
-    docs/status.md:14: [ ok ] echo $status
+    docs/status.md:5: [ ok ] true; echo $status
+    docs/status.md:7: [ ok ] false; echo $status
+    docs/status.md:9: [ ok ] echo "command output and status"; echo $status
+    docs/status.md:15: [ ok ] false
+    docs/status.md:16: [ ok ] echo $status
     docs/status.md: 5 tests PASSED
 
 Note that failed tests are always shown by default, even when not using the verbose mode:

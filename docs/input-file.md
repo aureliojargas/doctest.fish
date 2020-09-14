@@ -1,3 +1,5 @@
+# Input file checks
+
 No input file informed:
 
     > ./doctest.fish

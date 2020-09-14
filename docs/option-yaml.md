@@ -1,6 +1,6 @@
 # Option --yaml
 
-When using `--yaml`, instead of running the tests, all their data is printed to stdout in the YAML format. This information can then be used by other tools to act on the test data.
+No tests are run when the `--yaml` option is used. Instead, all the parsed data for the test cases is printed to stdout in the YAML format. This information can then be consumed by other tools.
 
 ## Single input file
 
@@ -25,23 +25,23 @@ When using `--yaml`, instead of running the tests, all their data is printed to 
     files:
       - path: 'docs/status.md'
         tests:
-          - line: 3
+          - line: 5
             cmd: 'true; echo $status'
             out:
               - '0'
-          - line: 5
+          - line: 7
             cmd: 'false; echo $status'
             out:
               - '1'
-          - line: 7
+          - line: 9
             cmd: 'echo "command output and status"; echo $status'
             out:
               - 'command output and status'
               - '0'
-          - line: 13
+          - line: 15
             cmd: 'false'
             out:
-          - line: 14
+          - line: 16
             cmd: 'echo $status'
             out:
               - '0'
