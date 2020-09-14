@@ -11,7 +11,7 @@ Use `--help` to show the help message for this program, listing all the availabl
           --prompt PROMPT   set the prompt string (default: "> ")
       -q, --quiet           no output is shown (not even errors)
       -v, --verbose         show information about every executed test
-      -V, --version         show the program version and exit
+          --version         show the program version and exit
           --yaml            show all test cases as YAML (no test is run)
       -h, --help            show this help message and exit
     

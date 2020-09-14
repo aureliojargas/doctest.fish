@@ -56,7 +56,7 @@ function show_help
     echo '      --prompt PROMPT   set the prompt string (default: "> ")'
     echo '  -q, --quiet           no output is shown (not even errors)'
     echo '  -v, --verbose         show information about every executed test'
-    echo '  -V, --version         show the program version and exit'
+    echo '      --version         show the program version and exit'
     echo '      --yaml            show all test cases as YAML (no test is run)'
     echo '  -h, --help            show this help message and exit'
     echo
@@ -71,7 +71,7 @@ function process_cmdline_arguments
         'p-prompt=' \
         'q/quiet' \
         'v/verbose' \
-        'V/version' \
+        'V-version' \
         'y-yaml' \
         'h/help' \
         -- $argv

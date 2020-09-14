@@ -1,4 +1,4 @@
-# Option --version (or -V)
+# Option --version
 
 Use `--version` to show the current version for this program:
 
@@ -7,6 +7,6 @@ Use `--version` to show the current version for this program:
 
 Note that the exit status for this operation is always zero:
 
-    > ./doctest.fish -V; echo $status
+    > ./doctest.fish --version; echo $status
     doctest.fish dev
     0
