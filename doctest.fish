@@ -10,7 +10,6 @@ set prefix '    '
 set prompt '> '
 set color_mode auto
 set use_color 0
-set debug_level 0
 set verbose_level 0
 set quiet 0
 set yaml 0
@@ -29,11 +28,6 @@ function error -a message
     set -l script_name (basename (status -f))
     printf_color red '%s: Error: %s\n' $script_name $message >&2
     exit 1
-end
-
-function debug -a color id line message
-    test $debug_level -gt 0
-    and printf_color $color 'Line %d: %s [%s]\n' $line $id $message
 end
 
 function starts_with -a pattern string
@@ -66,7 +60,6 @@ end
 function process_cmdline_arguments
     argparse --exclusive 'v,q' \
         'c-color=' \
-        'd-debug' \
         'x-prefix=' \
         'p-prompt=' \
         'q/quiet' \
@@ -78,7 +71,6 @@ function process_cmdline_arguments
     or exit 1
 
     # Cumulative options
-    set debug_level (count $_flag_debug) # undocumented dev option
     set verbose_level (count $_flag_verbose)
 
     # Options with arguments
@@ -147,25 +139,35 @@ function parse_input_file -a input_file
     test $verbose_level -ge 2
     and printf 'Parsing file %s\n' $input_file
 
+    function show_parsed_line -a line label message
+        test $verbose_level -lt 3; and return 0
+
+        switch $label
+            case command
+                set message (printf_color cyan '%s' $message)
+            case output
+                set message (printf_color magenta '%s' $message)
+        end
+        printf '%4d %-7s [%s]\n' $line $label $message
+    end
+
     # Adding extra empty "line" to the end of the input to make the
     # algorithm simpler. Then we always have a last-line trigger for the
     # last pending command. Otherwise we would have to handle the last
     # command after the loop.
     for line in (cat $input_file) ''
-
         set line_number (math $line_number + 1)
-        debug yellow '?' $line_number $line
 
         if starts_with $command_id $line
             # Found a command line
             set --local cmd (string sub -s (math $command_id_length + 1) -- $line)
             set --append parsed_data "$line_number:cmd:$cmd"
-            debug blue COMMAND $line_number $cmd
+            show_parsed_line $line_number command $cmd
             set pending_output 1
 
         else if test "$line" = "$command_id"; or test "$line" = "$command_id_trimmed"
             # Line has prompt, but it is an empty command
-            debug blue EMPTY $line_number ''
+            show_parsed_line $line_number prompt $line
             set pending_output 0
 
         else if test "$pending_output" -eq 1; and starts_with $prefix $line
@@ -173,11 +175,11 @@ function parse_input_file -a input_file
             # command output
             set --local out (string sub -s (math $prefix_length + 1) -- $line)
             set --append parsed_data "$line_number:out:$out"
-            debug cyan OUTPUT $line_number $out
+            show_parsed_line $line_number output $out
 
         else
             # Line is not a command neither command output
-            debug magenta OTHER $line_number $line
+            show_parsed_line $line_number other $line
             set pending_output 0
         end
     end
@@ -199,7 +201,8 @@ function test_input_file -a input_file
     # the last pending command. Otherwise we would have to handle the
     # last command after the loop.
     for data in $parsed_data '0:cmd:'
-        test $debug_level -gt 0; and printf_color magenta '[%s]\n' $data
+        test $verbose_level -ge 3
+        and printf '  [%s]\n' $data
 
         string split --max 2 : $data | read --line line type text
 
