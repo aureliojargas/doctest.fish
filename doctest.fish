@@ -197,6 +197,7 @@ function test_input_file -a input_file
                 # in a command should be visible to the next commands
                 # from the same file, and it should not be visible for
                 # the commands on the next file.
+                true # reset $status to zero
                 set output (eval $command 2>&1)
 
                 if test "$output" = "$expected" # OK
