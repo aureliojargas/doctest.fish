@@ -11,7 +11,7 @@ set prompt '> '
 set color_mode auto
 set use_color 0
 set debug_level 0
-set verbose 0
+set verbose_level 0
 set quiet 0
 set yaml 0
 
@@ -55,7 +55,7 @@ function show_help
     echo '      --prefix PREFIX   set the command line prefix (default: 4 spaces)'
     echo '      --prompt PROMPT   set the prompt string (default: "> ")'
     echo '  -q, --quiet           no output is shown (not even errors)'
-    echo '  -v, --verbose         show information about every executed test'
+    echo '  -v, --verbose         increase verbosity (cumulative)'
     echo '      --version         show the program version and exit'
     echo '      --yaml            show all test cases as YAML (no test is run)'
     echo '  -h, --help            show this help message and exit'
@@ -76,15 +76,23 @@ function process_cmdline_arguments
         'h/help' \
         -- $argv
     or exit 1
+
+    # Cumulative options
     set debug_level (count $_flag_debug) # undocumented dev option
+    set verbose_level (count $_flag_verbose)
+
+    # Options with arguments
     set -q _flag_color; and set color_mode $_flag_color
     set -q _flag_prefix; and set prefix $_flag_prefix
     set -q _flag_prompt; and set prompt $_flag_prompt
+
+    # On/off flags
     set -q _flag_quiet; and set quiet 1
-    set -q _flag_verbose; and set verbose 1
     set -q _flag_version; and show_version; and exit 0
     set -q _flag_yaml; and set yaml 1
     set -q _flag_help; and show_help; and exit 0
+
+    # Input files
     set --global input_files $argv
 end
 
@@ -136,6 +144,9 @@ function parse_input_file -a input_file
     #    9:out:0
     set --global parsed_data
 
+    test $verbose_level -ge 2
+    and printf 'Parsing file %s\n' $input_file
+
     # Adding extra empty "line" to the end of the input to make the
     # algorithm simpler. Then we always have a last-line trigger for the
     # last pending command. Otherwise we would have to handle the last
@@ -170,11 +181,18 @@ function parse_input_file -a input_file
             set pending_output 0
         end
     end
+
+    test $verbose_level -ge 2
+    and printf 'Parsing finished, %d command/output lines found\n' \
+        (count $parsed_data)
 end
 
 function test_input_file -a input_file
     set --local test_number 0
     set --local failed_tests 0
+
+    test $verbose_level -ge 2
+    and printf 'Testing commands from file %s\n' $input_file
 
     # Adding extra empty "command" after $parsed_data to make the
     # algorithm simpler. Then we always have a last-command trigger for
@@ -192,6 +210,11 @@ function test_input_file -a input_file
                 set test_number (math $test_number + 1) # this file
                 set total_tests (math $total_tests + 1) # global
 
+                test $verbose_level -ge 2
+                and printf 'Running [%s], expecting [%s]\n' \
+                    "$command" \
+                    (string join '\\n' $expected)
+
                 # Important: eval must be in the same execution scope
                 # for all the tests in a single file. A var $foo defined
                 # in a command should be visible to the next commands
@@ -201,7 +224,7 @@ function test_input_file -a input_file
                 set output (eval $command 2>&1)
 
                 if test "$output" = "$expected" # OK
-                    test $verbose -eq 1
+                    test $verbose_level -ge 1
                     and printf_color green '%s:%d: [ ok ] %s\n' \
                         $input_file $line_number $command
 
@@ -237,6 +260,9 @@ function test_input_file -a input_file
         end
     end
     show_file_summary $input_file $test_number $failed_tests
+
+    test $verbose_level -ge 2
+    and printf 'Testing finished for file %s\n' $input_file
 end
 
 function show_file_summary -a file tested failed

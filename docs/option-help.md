@@ -10,7 +10,7 @@ Use `--help` to show the help message for this program, listing all the availabl
           --prefix PREFIX   set the command line prefix (default: 4 spaces)
           --prompt PROMPT   set the prompt string (default: "> ")
       -q, --quiet           no output is shown (not even errors)
-      -v, --verbose         show information about every executed test
+      -v, --verbose         increase verbosity (cumulative)
           --version         show the program version and exit
           --yaml            show all test cases as YAML (no test is run)
       -h, --help            show this help message and exit
