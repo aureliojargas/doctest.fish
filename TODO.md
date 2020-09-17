@@ -1,12 +1,3 @@
-## Fix variable clash bug
-
-Since tests are run with `eval`, they can interfere with `doctest.fish` execution. For example, when a user test defines variables such as `$prefix` or `$failed_tests`.
-
-One alternative is doing as `clitest` does: prefixing all the variables to avoid conflicts. It used `$tt_*`, but maybe `$__*` could be more readable.
-
-This is implemented in the `variable-prefixes` branch.
-
-
 ## Readme
 
 This flexibility on the prompt identifier can be handy if you need to
