@@ -1,6 +1,10 @@
 # Multiple input files
 
-When the program is called with two or more input files, a global summary message is shown at the end, preceded by a blank line.
+Use fish's glob to test all the files under a directory. For example, to test all the Markdown files in the `docs` directory, recursively:
+
+    ./doctest.fish docs/**.md
+
+When the program is called with two or more [input files](input-file.md), a global summary message is shown at the end, preceded by a blank line.
 
 ## Passed or failed tests
 

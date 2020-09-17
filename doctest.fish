@@ -1,9 +1,10 @@
 #!/usr/bin/env fish
-# doctest.fish, by Aurelio Jargas
+# doctest.fish - Test your documentation examples
+# Made by Aurelio Jargas in September 2020
 
+set my_url https://github.com/aureliojargas/doctest.fish
 set my_name doctest.fish
 set my_version dev
-set my_url https://github.com/aureliojargas/doctest.fish
 
 # Defaults
 set prefix '    '
