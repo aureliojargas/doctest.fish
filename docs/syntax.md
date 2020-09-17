@@ -17,6 +17,10 @@ When using a comment as a command, nothing happens:
     > # foo
     >
 
+Comments after the command, just like in the real command line, are just ignored:
+
+    > echo foo  # comments here are allowed and ignored
+    foo
 
 ## Prompt alone
 

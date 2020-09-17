@@ -34,3 +34,12 @@ Literal tab in the command:
     a b
     > echo "a	b"
     a	b
+
+Literal quotes:
+
+    > echo \"a\'b
+    "a'b
+    > echo "\"a'b"
+    "a'b
+    > echo '"a\'b'
+    "a'b
