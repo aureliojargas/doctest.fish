@@ -1,2 +1,2 @@
-    > echo foo
+    $ echo foo
     bar

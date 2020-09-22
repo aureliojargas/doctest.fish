@@ -2,11 +2,11 @@
 
 Use `--version` to show the current version for this program:
 
-    > ./doctest.fish --version
-    doctest.fish dev
+    $ ./doctester.py --version
+    doctester 0.1.0
 
 Note that the exit status for this operation is always zero:
 
-    > ./doctest.fish --version; echo $status
-    doctest.fish dev
+    $ ./doctester.py --version; echo $?
+    doctester 0.1.0
     0

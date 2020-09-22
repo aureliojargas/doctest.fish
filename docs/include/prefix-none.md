@@ -1,3 +1,3 @@
-> echo foo
+$ echo foo
 foo
->
+$
