@@ -15,4 +15,5 @@ test-fish:
 	rm doctester.py.bak
 
 test-python:
-	python3 -m unittest test_doctester.py
+	# python3 -m unittest test_doctester.py
+	python3 -m unittest discover -s tests/

@@ -14,22 +14,32 @@ PROGRAM_NAME = "doctester"
 __version__ = "0.1.0"
 
 
+class Defaults:
+    color = "auto"
+    prefix = " " * 4
+    prompt = "$ "
+    shell = "bash"
+
+
 def setup_cmdline_parser():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--prefix",
         metavar="PREFIX",
-        default=" " * 4,
+        default=Defaults.prefix,
         help="set the command line prefix (default: 4 spaces)",
     )
     parser.add_argument(
         "--prompt",
         metavar="PROMPT",
-        default="$ ",
-        help="set the prompt string (default: '$ ')",
+        default=Defaults.prompt,
+        help="set the prompt string (default: '%s')" % Defaults.prompt,
     )
     parser.add_argument(
-        "--shell", choices=["bash", "fish"], default="bash", help="set the shell",
+        "--shell",
+        choices=["bash", "fish"],
+        default=Defaults.shell,
+        help="set the shell (default: %s)" % Defaults.shell,
     )
     parser.add_argument(
         "--fix",
@@ -38,10 +48,9 @@ def setup_cmdline_parser():
     )
     parser.add_argument(
         "--color",
-        metavar="WHEN",
         choices=["auto", "always", "yes", "never", "no"],
-        default="auto",
-        help="use colors or not? auto*, always, never",
+        default=Defaults.color,
+        help="use colors or not? (default: %s)" % Defaults.color,
     )
     parser.add_argument(
         "-q", "--quiet", action="store_true", help="no output is shown",
@@ -105,22 +114,6 @@ class Log:
             )
 
 
-def validate_prompt(string):
-    if not string:
-        LOG.error("The prompt string cannot be empty, set it via --prompt")
-
-
-def validate_input_files(paths):
-    if not paths:
-        LOG.error("no test file informed")
-
-    for path in paths:
-        if path.is_dir():
-            LOG.error("input file is a directory: %s" % path)
-        if not path.is_file():
-            LOG.error("cannot read input file: %s" % path)
-
-
 class ShellBase:
     OUTPUT_MARKER = "<doctester>".rjust(72, "-")
 
@@ -128,6 +121,7 @@ class ShellBase:
         self.script = []
         self.config = config or {}
         self.input_path = input_path
+        self.commands_found = 0
 
     def quote(self, text):
         return shlex.quote(text)
@@ -164,6 +158,14 @@ class ShellBase:
         """Regenerate the full document and save into self.output_path"""
 
         # Run the shell script that will generate the full document
+        # ter dois paths (com e sem marker) pode trazer bugs em um deles,
+        # o ideal seria testar tudo com e sem prefix. Talvez seja viável fazer isso nos testes via Python
+        # se sim, a doc pode ser uma doc mesmo, e não uma suite de testes
+        # a doc pode ser simplificada
+        # os testes python devem ser testes full, tipo os atuais, em vez de ser unit e testar só uma função. ou ter ambos.
+        # posso ter templates para os testes (sem indent) e e aplicar ou não o indent ao ler estes templates, inclusive indent diferentes como tab
+        # cada template é isolado (um único tipo de teste) e posso combinar templates pra fazer um test case mais extenso
+        # e tem também a variação pra cada shell nestes templates (setar var)
         self.script_path = pathlib.Path(tempfile.mkstemp()[1])
         self.script_path.write_text(self.get_script())
         result = subprocess.run(
@@ -189,9 +191,6 @@ class ShellBase:
             )
 
         # Restore indentation in output blocks
-        # XXX $? will work in another line when there's no prefix.
-        #     maybe it's better to always have the markers, even when no prefix,
-        #     so the execution path will always be the same
         if self.config.prefix:
             in_output = False
             output = []
@@ -238,28 +237,71 @@ class Fish(ShellBase):
         return "'%s'" % text.replace("\\", "\\\\").replace("'", "\\'")
 
 
+def validate_config(config):
+    # prefix
+    if config.prefix == "tab":  # XXX document and unittest it
+        config.prefix = "\t"
+
+    # prompt
+    if not config.prompt:
+        LOG.error("The prompt string cannot be empty, set it via --prompt")
+
+    # input files
+    if not config.files:
+        LOG.error("no test file informed")
+
+    for path in config.files:
+        if path.is_dir():
+            LOG.error("input file is a directory: %s" % path)
+        if not path.is_file():
+            LOG.error("cannot read input file: %s" % path)
+
+
+def parse_input(data, shell):
+    command_id = shell.config.prefix + shell.config.prompt
+    command_id_trimmed = command_id.rstrip(" ")
+    command_id_length = len(command_id)
+
+    pending_output = False
+    for line_number, line in enumerate(data, start=1):
+        line = re.sub(r"\r?\n$", "", line)
+
+        if line.startswith(command_id):
+            # Found a command line
+            shell.commands_found += 1
+            cmd = line[command_id_length:]
+            LOG.debug("COMMA", line_number, line)
+            shell.echo(line)
+            shell.run_command(cmd)
+            pending_output = True
+
+        elif line == command_id or line == command_id_trimmed:
+            # Line has prompt, but it is an empty command
+            LOG.debug("PROMP", line_number, line)
+            pending_output = False
+            shell.echo(line)
+
+        elif pending_output and line.startswith(shell.config.prefix):
+            # Line has the prefix and is not a command, so this is the
+            # command output
+            LOG.debug("OUTPU", line_number, line)
+            # do nothing
+
+        else:
+            # Line is not a command neither command output
+            # show_parsed_line $line_number other $line
+            LOG.debug("OTHER", line_number, line)
+            pending_output = False
+            shell.echo(line)
+
+
 def main(config):
 
     if config.version:
         print(PROGRAM_NAME, __version__)
         sys.exit(0)
 
-    validate_prompt(config.prompt)
-    validate_input_files(config.files)
-
-    if config.prefix == "tab":  # XXX document and unittest it
-        config.prefix = "\t"
-
-    prefix = config.prefix
-    prompt = config.prompt
-
-    command_id = prefix + prompt
-    command_id_trimmed = command_id.rstrip(" ")
-
-    # Pre-compute lengths and counts
-    # prefix_length = len(prefix)
-    command_id_length = len(command_id)
-    # input_files_count = (count $input_files)
+    validate_config(config)
 
     total_failed = 0
     total_skipped = 0
@@ -276,43 +318,12 @@ def main(config):
         elif config.shell == "fish":
             shell = Fish(input_path, config)
 
-        with input_path.open() as input_file:
-            # parsed_data = []
-            commands_count = 0
-            pending_output = False
-            for line_number, line in enumerate(input_file, start=1):
-                line = re.sub(r"\r?\n$", "", line)
+        with input_path.open() as input_fd:
+            parse_input(input_fd, shell)
 
-                if line.startswith(command_id):
-                    # Found a command line
-                    commands_count += 1
-                    cmd = line[command_id_length:]
-                    LOG.debug("COMMA", line_number, line)
-                    shell.echo(line)
-                    shell.run_command(cmd)
-                    pending_output = True
-
-                elif line == command_id or line == command_id_trimmed:
-                    # Line has prompt, but it is an empty command
-                    LOG.debug("PROMP", line_number, line)
-                    pending_output = False
-                    shell.echo(line)
-
-                elif pending_output and line.startswith(prefix):
-                    # Line has the prefix and is not a command, so this is the
-                    # command output
-                    LOG.debug("OUTPU", line_number, line)
-                    # do nothing
-
-                else:
-                    # Line is not a command neither command output
-                    # show_parsed_line $line_number other $line
-                    LOG.debug("OTHER", line_number, line)
-                    pending_output = False
-                    shell.echo(line)
-        if commands_count:
+        if shell.commands_found:
             LOG.info(
-                "Found %d commands." % commands_count, end=" ", flush=True,
+                "Found %d commands." % shell.commands_found, end=" ", flush=True,
             )
             shell.run_script()
             diff = shell.diff()
