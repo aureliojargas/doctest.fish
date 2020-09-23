@@ -13,8 +13,6 @@ import tempfile
 PROGRAM_NAME = "doctester"
 __version__ = "0.1.0"
 
-FLAG_DEBUG = 0
-
 
 def setup_cmdline_parser():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -47,6 +45,9 @@ def setup_cmdline_parser():
     )
     parser.add_argument(
         "-q", "--quiet", action="store_true", help="no output is shown",
+    )
+    parser.add_argument(
+        "--debug", action="store_true", help="debug",  # XXX hide
     )
     parser.add_argument(
         "--version", action="store_true", help="show the program version and exit",
@@ -92,7 +93,7 @@ class Log:
         return Log.COLORS[color] + text + Log.COLORS["reset"]
 
     def debug(self, *args):
-        if FLAG_DEBUG:
+        if self.config.debug:
             colors = {
                 "OTHER": "yellow",
                 "COMMA": "magenta",
@@ -121,6 +122,8 @@ def validate_input_files(paths):
 
 
 class ShellBase:
+    OUTPUT_MARKER = "<doctester>".rjust(72, "-")
+
     def __init__(self, input_path=None, config=None):
         self.script = []
         self.config = config or {}
@@ -134,21 +137,18 @@ class ShellBase:
 
     def run_command(self, command):
         if self.config.prefix:
-            self.run_command_and_add_prefix(command)
+            self.echo(ShellBase.OUTPUT_MARKER)
+            self.script.append(command)
+            self.echo(ShellBase.OUTPUT_MARKER)
         else:
             self.script.append(command)
-
-    def run_command_and_add_prefix(self, command):
-        # must be implemented by each shell class
-        pass
 
     def get_run_script_command(self):
         # must be implemented by each shell class
         pass
 
     def get_script_pre(self):
-        # must be implemented by each shell class
-        pass
+        return []
 
     def get_script_post(self):
         # Always end with a successful silent command ("true"), so the
@@ -174,7 +174,7 @@ class ShellBase:
         )
 
         if result.returncode == 0:
-            if FLAG_DEBUG:
+            if self.config.debug:
                 print("\nScript:", self.script_path)
             else:
                 self.script_path.unlink()
@@ -188,9 +188,27 @@ class ShellBase:
                 str(self.script_path),
             )
 
+        # Restore indentation in output blocks
+        # XXX $? will work in another line when there's no prefix.
+        #     maybe it's better to always have the markers, even when no prefix,
+        #     so the execution path will always be the same
+        if self.config.prefix:
+            in_output = False
+            output = []
+            for line in result.stdout.split("\n"):
+                if line == ShellBase.OUTPUT_MARKER:
+                    in_output = not in_output
+                    continue  # remove marker from output
+                if in_output:
+                    line = self.config.prefix + line
+                output.append(line)
+            output = "\n".join(output)
+        else:
+            output = result.stdout
+
         # Save the generated document
         self.output_path = pathlib.Path(tempfile.mkstemp()[1])
-        self.output_path.write_text(result.stdout)
+        self.output_path.write_text(output)
 
     def diff(self, left=None, right=None):
         left = left or self.input_path
@@ -207,22 +225,6 @@ class Bash(ShellBase):
     def get_run_script_command(self):
         return ["bash", self.script_path]
 
-    def get_script_pre(self):
-        return ["_doctester_tmp=$(mktemp)"]
-
-    def run_command_and_add_prefix(self, command):
-        # This restores the original prefix to the output lines
-        sed_command = shlex.quote("s/^/%s/" % self.config.prefix.replace("/", "\\/"))
-        # \n avoids breakage with "true #comment"
-        # { ... ; } avoids breakage with "true >foo"
-        # true; to avoid empty commands (i.e. comments-only) inside { ... }
-        # >out; sed avoids a pipe | breaking some commands "a=1 | sed"
-        self.script.append(
-            "{ %s\ntrue; } >$_doctester_tmp 2>&1; sed %s $_doctester_tmp; rm $_doctester_tmp"
-            % (command, sed_command)
-            # XXX save the real $? state after the original command?
-        )
-
 
 class Fish(ShellBase):
     def get_run_script_command(self):
@@ -234,19 +236,6 @@ class Fish(ShellBase):
         # which escapes a single quote and \\, which escapes the
         # backslash symbol.
         return "'%s'" % text.replace("\\", "\\\\").replace("'", "\\'")
-
-    def get_script_pre(self):
-        return ["set _doctester_tmp (mktemp)"]
-
-    def run_command_and_add_prefix(self, command):
-        # This restores the original prefix to the output lines
-        # \n avoids breakage with "true #comment"
-        # { ... ; } avoids breakage with "true >foo"
-        # >out; sed avoids a pipe | breaking some commands "a=1 | sed"
-        self.script.append(
-            "begin; %s\nend >$_doctester_tmp 2>&1; string replace -r '^' %s < $_doctester_tmp; rm $_doctester_tmp"
-            % (command, shlex.quote(self.config.prefix))
-        )
 
 
 def main(config):
@@ -279,7 +268,7 @@ def main(config):
     for input_path in config.files:
         LOG.info("%s:" % input_path, end=" ", flush=True)
 
-        if FLAG_DEBUG:
+        if config.debug:
             LOG.info("")
 
         if config.shell == "bash":
