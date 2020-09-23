@@ -5,20 +5,29 @@ import unittest
 from context import doctester
 
 
-class Config(doctester.Defaults):
-    debug = False
+class Config:
+    def __init__(
+        self,
+        shell=doctester.Defaults.shell,
+        prefix=doctester.Defaults.prefix,
+        prompt=doctester.Defaults.prompt,
+    ):
+        self.shell = shell
+        self.prefix = prefix
+        self.prompt = prompt
+        self.color = doctester.Defaults.color
+        self.debug = False
 
 
 class Template:
     STATUS = {"bash": "$?", "fish": "$status"}
 
-    def __init__(
-        self, shell=Config.shell, prefix=Config.prefix, prompt=Config.prompt,
-    ):
-        self.shell = shell
-        self.prefix = prefix
-        self.prompt = prompt
-        self.status = Template.STATUS[shell]
+    def __init__(self, shell=None, prefix=None, prompt=None):
+        defaults = Config()
+        self.shell = shell or defaults.shell
+        self.prefix = prefix or defaults.prefix
+        self.prompt = prompt or defaults.prompt
+        self.status = Template.STATUS[self.shell]
 
     def cmd(self, cmd):
         return self.prefix + self.prompt + cmd
@@ -58,31 +67,42 @@ class Template:
 
 
 class TestX(unittest.TestCase):  # XXX fix name
-    def test_status(self):
-        t = Template()
-        shell = doctester.Bash(config=Config)
-        doctester.LOG = doctester.Log(Config)
-        doc = [
-            t.lorem(),
-            t.cmd_with_status("true"),
-            t.out("0"),
-            t.cmd_with_status("false"),
-            t.out("1"),
-            t.cmd_with_status(t.echo("command output and status")),
-            t.out("command output and status"),
-            t.out("0"),
-            t.lorem(),
-            t.cmd("false"),
-            t.cmd(t.echo(t.status)),
-            t.out("0"),
-        ]
-        doctester.parse_input(doc, shell)
 
-    # def test_template(self):
-    #     self.assertEqual(Template().cmd_ok_two(), "")
-    #     self.assertEqual(Template().echo("$foo"), "")
-    #     self.assertEqual(Template().set_var("foo", "bar"), "xxx")
-    #     self.assertEqual(Template(shell="fish").set_var("foo", "bar"), "xxx")
+    # Ter testes pro parser, todas as combinações
+    # Ter testes pro executor e suas pegadinhas
+
+    def test_status(self):
+        for shell in doctester.Defaults.shells:
+            t = Template(shell=shell)
+            script = doctester.ShellBase.factory(config=Config(shell=shell))
+            doc = [
+                t.cmd_with_status("true"),
+                t.out("0"),
+                t.cmd_with_status("false"),
+                t.out("1"),
+                t.cmd_with_status(t.echo("command output and status")),
+                t.out("command output and status"),
+                t.out("0"),
+                t.cmd("false"),
+                t.cmd(t.echo(t.status)),
+                t.out("0"),
+            ]
+            doctester.parse_input(doc, script)
+            script.run_script()
+            self.assertEqual(script.output, doc)
+
+    def test_set_read_var(self):
+        for shell in doctester.Defaults.shells:
+            t = Template(shell=shell)
+            script = doctester.ShellBase.factory(config=Config(shell=shell))
+            doc = [
+                t.cmd(t.set_var("foo", "bar")),
+                t.cmd(t.echo("$foo")),
+                t.out("bar"),
+            ]
+            doctester.parse_input(doc, script)
+            script.run_script()
+            self.assertEqual(script.output, doc)
 
     def test_syntax_error(self):
         shell = doctester.Bash()
@@ -102,6 +122,8 @@ class TestX(unittest.TestCase):  # XXX fix name
         self.assertEqual(shell.quote("a\\c"), "'a\\\\c'")
         self.assertEqual(shell.quote("'\\'"), "'\\'\\\\\\''")
 
+
+doctester.LOG = doctester.Log(Config())
 
 if __name__ == "__main__":
     unittest.main()

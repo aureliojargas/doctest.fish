@@ -9,7 +9,7 @@ test-bash:
 # original Python script to make fish the default shell.
 test-fish:
 	cp doctester.py doctester.py.orig.$$$$; \
-	sed -i'.bak' -e 's/default="bash",/default="fish",/' doctester.py; \
+	sed -i'.bak' -e 's/default=Defaults.shell,/default="fish",/' doctester.py; \
 	./doctester.py docs/fish/*.md docs/bash/syntax.md; \
 	mv doctester.py.orig.$$$$ doctester.py; \
 	rm doctester.py.bak
