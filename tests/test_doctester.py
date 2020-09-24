@@ -4,6 +4,14 @@ import unittest
 
 from context import doctester
 
+# o ideal seria testar tudo com e sem prefix. Talvez seja viável fazer isso nos testes via Python
+# se sim, a doc pode ser uma doc mesmo, e não uma suite de testes
+# a doc pode ser simplificada
+# os testes python devem ser testes full, tipo os atuais, em vez de ser unit e testar só uma função. ou ter ambos.
+# posso ter templates para os testes (sem indent) e e aplicar ou não o indent ao ler estes templates, inclusive indent diferentes como tab
+# cada template é isolado (um único tipo de teste) e posso combinar templates pra fazer um test case mais extenso
+# e tem também a variação pra cada shell nestes templates (setar var)
+
 
 class Config:
     def __init__(
@@ -72,9 +80,11 @@ class TestX(unittest.TestCase):  # XXX fix name
     # Ter testes pro executor e suas pegadinhas
 
     def test_status(self):
+        config = Config()
         for shell in doctester.Defaults.shells:
+            config.shell = shell
             t = Template(shell=shell)
-            script = doctester.ShellBase.factory(config=Config(shell=shell))
+            runner = doctester.ScriptRunner(config=config)
             doc = [
                 t.cmd_with_status("true"),
                 t.out("0"),
@@ -87,40 +97,48 @@ class TestX(unittest.TestCase):  # XXX fix name
                 t.cmd(t.echo(t.status)),
                 t.out("0"),
             ]
-            doctester.parse_input(doc, script)
-            script.run_script()
-            self.assertEqual(script.output, doc)
+            # doctester.parse_input(doc, script)
+            _, script = doctester.parse_input(
+                doc, config.prefix, config.prompt, config.shell
+            )
+            runner.run_script(script, shell)
+            self.assertEqual(runner.output, doc)
 
     def test_set_read_var(self):
+        config = Config()
         for shell in doctester.Defaults.shells:
+            config.shell = shell
             t = Template(shell=shell)
-            script = doctester.ShellBase.factory(config=Config(shell=shell))
+            runner = doctester.ScriptRunner(config=config)
             doc = [
                 t.cmd(t.set_var("foo", "bar")),
                 t.cmd(t.echo("$foo")),
                 t.out("bar"),
             ]
-            doctester.parse_input(doc, script)
-            script.run_script()
-            self.assertEqual(script.output, doc)
+            _, script = doctester.parse_input(
+                doc, config.prefix, config.prompt, config.shell
+            )
+            runner.run_script(script, shell)
+            self.assertEqual(runner.output, doc)
 
     def test_syntax_error(self):
-        shell = doctester.Bash()
-        shell.script = ['echo "']
+        script = doctester.BashScript()
+        script.script = ['echo "']
+        runner = doctester.ScriptRunner(Config())
 
         # Silencing stderr to avoid pollution in the test run output
         with self.assertRaises(RuntimeError):
             stderr_orig = sys.stderr
             sys.stderr = io.StringIO()
-            shell.run_script()
+            runner.run_script(str(script), "bash")
             sys.stderr = stderr_orig
 
     def test_quote_fish(self):
-        shell = doctester.Fish()
-        self.assertEqual(shell.quote("abc"), "'abc'")
-        self.assertEqual(shell.quote("a'c"), "'a\\'c'")
-        self.assertEqual(shell.quote("a\\c"), "'a\\\\c'")
-        self.assertEqual(shell.quote("'\\'"), "'\\'\\\\\\''")
+        script = doctester.FishScript()
+        self.assertEqual(script.quote("abc"), "'abc'")
+        self.assertEqual(script.quote("a'c"), "'a\\'c'")
+        self.assertEqual(script.quote("a\\c"), "'a\\\\c'")
+        self.assertEqual(script.quote("'\\'"), "'\\'\\\\\\''")
 
 
 doctester.LOG = doctester.Log(Config())

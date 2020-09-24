@@ -116,21 +116,18 @@ class Log:
             )
 
 
-class ShellBase:
+# The output for this parser is a valid shell script, that when
+# executed, should recreate the original parsed document.
+class Script:
     OUTPUT_MARKER = "<doctester>".rjust(72, "-")
 
-    def __init__(self, input_path=None, config=None, bin=None):
-        self.bin = bin
-        self.config = config
-        self.input_path = input_path
-        self.output = []
-        self.script = []
-        self.commands_found = 0
-
     @staticmethod
-    def factory(*args, **kwargs):
-        data = {"bash": Bash, "fish": Fish}
-        return data[kwargs["config"].shell](*args, **kwargs)
+    def factory(shell):
+        data = {"bash": BashScript, "fish": FishScript}
+        return data[shell]()
+
+    def __init__(self):
+        self.script = []
 
     def quote(self, text):
         return shlex.quote(text)
@@ -138,45 +135,53 @@ class ShellBase:
     def echo(self, text):
         self.script.append("echo %s" % self.quote(text))
 
-    def run_command(self, command):
-        if self.config.prefix:
-            self.echo(ShellBase.OUTPUT_MARKER)
-            self.script.append(command)
-            self.echo(ShellBase.OUTPUT_MARKER)
-        else:
-            self.script.append(command)
+    def eval(self, text):
+        self.echo(Script.OUTPUT_MARKER)
+        self.script.append(text)
+        self.echo(Script.OUTPUT_MARKER)
 
-    def get_script(self):
+    def __str__(self):
         # Always end with a successful silent command ("true"), so the
         # script execution will always return zero if it reached the
         # end. This avoids raising RuntimeError if the user enters a
         # failing command in the very last line of the input file.
         return list_as_text(self.script + ["true"])
 
-    def run_script(self):
+
+class BashScript(Script):
+    pass
+
+
+class FishScript(Script):
+    def quote(self, text):
+        # https://fishshell.com/docs/current/#quotes
+        # The only backslash escape accepted within single quotes is \',
+        # which escapes a single quote and \\, which escapes the
+        # backslash symbol.
+        return "'%s'" % text.replace("\\", "\\\\").replace("'", "\\'")
+
+
+class ScriptRunner:
+    def __init__(self, input_path=None, config=None):
+        self.config = config
+        self.input_path = input_path
+        self.output = []
+
+    def run_script(self, script, executable):
         """Regenerate the full document and save into self.output list"""
 
         # Run the shell script that will generate the full document
-        # ter dois paths (com e sem marker) pode trazer bugs em um deles,
-        # o ideal seria testar tudo com e sem prefix. Talvez seja viável fazer isso nos testes via Python
-        # se sim, a doc pode ser uma doc mesmo, e não uma suite de testes
-        # a doc pode ser simplificada
-        # os testes python devem ser testes full, tipo os atuais, em vez de ser unit e testar só uma função. ou ter ambos.
-        # posso ter templates para os testes (sem indent) e e aplicar ou não o indent ao ler estes templates, inclusive indent diferentes como tab
-        # cada template é isolado (um único tipo de teste) e posso combinar templates pra fazer um test case mais extenso
-        # e tem também a variação pra cada shell nestes templates (setar var)
-
         result = subprocess.run(
-            [self.bin],
+            [executable],
             universal_newlines=True,  # renamed to text= in py37
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            input=self.get_script(),  # must have \n in last line
+            input=script,  # must have \n in last line
         )
 
         if result.returncode == 0:
             if self.config.debug:
-                print("\nScript:", save_temp_file(self.get_script()))
+                print("\nScript:", save_temp_file(script))
         else:
             print(
                 "Unexpected fatal error occurred:\n%s\n" % result.stdout,
@@ -184,23 +189,26 @@ class ShellBase:
             )
             raise RuntimeError(
                 "Failed running shell script to generate the document",
-                str(save_temp_file(self.get_script())),
+                str(save_temp_file(script)),
             )
 
         self.output = result.stdout.split("\n")[:-1]  # remove \n at EOF
 
-        # Restore indentation in output blocks
-        if self.config.prefix:
-            in_output = False
-            filtered_output = []
-            for line in self.output:
-                if line == ShellBase.OUTPUT_MARKER:
-                    in_output = not in_output
-                    continue  # remove marker from output
-                if in_output:
-                    line = self.config.prefix + line
-                filtered_output.append(line)
-            self.output = filtered_output
+        self.output = self.restore_prefix(self.output, self.config.prefix)
+
+    # Restore indentation in output blocks
+    # See also Script.command(), where the markers are added
+    def restore_prefix(self, text, prefix):
+        must_indent = False
+        filtered = []
+        for line in text:
+            if line == Script.OUTPUT_MARKER:
+                must_indent = not must_indent
+                continue  # remove marker
+            if must_indent:
+                line = prefix + line
+            filtered.append(line)
+        return filtered
 
     def diff(self):
         left = self.input_path
@@ -211,23 +219,6 @@ class ShellBase:
             stderr=subprocess.STDOUT,
             universal_newlines=True,
         )
-
-
-class Bash(ShellBase):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, bin="bash", **kwargs)
-
-
-class Fish(ShellBase):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, bin="fish", **kwargs)
-
-    def quote(self, text):
-        # https://fishshell.com/docs/current/#quotes
-        # The only backslash escape accepted within single quotes is \',
-        # which escapes a single quote and \\, which escapes the
-        # backslash symbol.
-        return "'%s'" % text.replace("\\", "\\\\").replace("'", "\\'")
 
 
 def save_temp_file(contents):
@@ -260,31 +251,33 @@ def validate_config(config):
             LOG.error("cannot read input file: %s" % path)
 
 
-def parse_input(data, shell_handler):
-    command_id = shell_handler.config.prefix + shell_handler.config.prompt
+def parse_input(input_, prefix, prompt, shell):
+    command_id = prefix + prompt
     command_id_trimmed = command_id.rstrip(" ")
     command_id_length = len(command_id)
+    script = Script.factory(shell)
 
+    command_count = 0
     pending_output = False
-    for line_number, line in enumerate(data, start=1):
+    for line_number, line in enumerate(input_, start=1):
         line = re.sub(r"\r?\n$", "", line)
 
         if line.startswith(command_id):
             # Found a command line
-            shell_handler.commands_found += 1
+            command_count += 1
             cmd = line[command_id_length:]
             LOG.debug("COMMA", line_number, line)
-            shell_handler.echo(line)
-            shell_handler.run_command(cmd)
+            script.echo(line)
+            script.eval(cmd)
             pending_output = True
 
         elif line == command_id or line == command_id_trimmed:
             # Line has prompt, but it is an empty command
             LOG.debug("PROMP", line_number, line)
             pending_output = False
-            shell_handler.echo(line)
+            script.echo(line)
 
-        elif pending_output and line.startswith(shell_handler.config.prefix):
+        elif pending_output and line.startswith(prefix):
             # Line has the prefix and is not a command, so this is the
             # command output
             LOG.debug("OUTPU", line_number, line)
@@ -295,7 +288,15 @@ def parse_input(data, shell_handler):
             # show_parsed_line $line_number other $line
             LOG.debug("OTHER", line_number, line)
             pending_output = False
-            shell_handler.echo(line)
+            script.echo(line)
+
+    return command_count, str(script)
+
+
+def swap_ns_dict(x):
+    if isinstance(x, argparse.Namespace):
+        return vars(x).copy()
+    return argparse.Namespace(**x)
 
 
 def main(config):
@@ -316,19 +317,19 @@ def main(config):
         if config.debug:
             LOG.info("")
 
-        shell_handler = ShellBase.factory(input_path=input_path, config=config)
+        runner = ScriptRunner(input_path=input_path, config=config)
 
         with input_path.open() as input_fd:
-            parse_input(input_fd, shell_handler)
-
-        if shell_handler.commands_found:
-            LOG.info(
-                "Found %d commands." % shell_handler.commands_found,
-                end=" ",
-                flush=True,
+            command_count, script = parse_input(
+                input_fd, config.prefix, config.prompt, config.shell
             )
-            shell_handler.run_script()
-            diff = shell_handler.diff()
+
+        if command_count:
+            LOG.info(
+                "Found %d commands." % command_count, end=" ", flush=True,
+            )
+            runner.run_script(script, config.shell)
+            diff = runner.diff()
             if diff.returncode == 0:
                 LOG.info(LOG.colored("green", "PASSED"))
             else:
@@ -337,9 +338,7 @@ def main(config):
 
                 if config.fix:
                     # mv new old
-                    shell_handler.input_path.write_text(
-                        list_as_text(shell_handler.output)
-                    )
+                    runner.input_path.write_text(list_as_text(runner.output))
                     LOG.info(LOG.colored("cyan", "FIXED"))
                 else:
                     LOG.info(LOG.colored("red", "FAILED"))
