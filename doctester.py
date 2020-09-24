@@ -122,12 +122,18 @@ class Script:
     OUTPUT_MARKER = "<doctester>".rjust(72, "-")
 
     @staticmethod
-    def factory(shell):
+    def factory(config):
         data = {"bash": BashScript, "fish": FishScript}
-        return data[shell]()
+        return data[config.shell](config)
 
-    def __init__(self):
+    def __init__(self, config):
+        self.config = config
         self.script = []
+        self.command_count = 0
+        self.output = ""
+
+    def executable(self):  # must be implemented in the children
+        pass
 
     def quote(self, text):
         return shlex.quote(text)
@@ -147,12 +153,44 @@ class Script:
         # failing command in the very last line of the input file.
         return list_as_text(self.script + ["true"])
 
+    def run(self):
+        script_contents = str(self)
+        result = subprocess.run(
+            [self.executable()],
+            universal_newlines=True,  # renamed to text= in py37
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            input=script_contents,  # must have \n in last line
+        )
+        self.output = self.fix_output(
+            result.stdout.split("\n")[:-1]  # remove \n at EOF
+        )
+        return result
+
+    # Restore indentation in command output blocks
+    # Remove marker lines around command output
+    def fix_output(self, text):
+        must_indent = False
+        filtered = []
+        for line in text:
+            if line == Script.OUTPUT_MARKER:
+                must_indent = not must_indent
+                continue  # remove marker
+            if must_indent:
+                line = self.config.prefix + line
+            filtered.append(line)
+        return filtered
+
 
 class BashScript(Script):
-    pass
+    def executable(self):
+        return "bash"
 
 
 class FishScript(Script):
+    def executable(self):
+        return "fish"
+
     def quote(self, text):
         # https://fishshell.com/docs/current/#quotes
         # The only backslash escape accepted within single quotes is \',
@@ -161,64 +199,13 @@ class FishScript(Script):
         return "'%s'" % text.replace("\\", "\\\\").replace("'", "\\'")
 
 
-class ScriptRunner:
-    def __init__(self, input_path=None, config=None):
-        self.config = config
-        self.input_path = input_path
-        self.output = []
-
-    def run_script(self, script, executable):
-        """Regenerate the full document and save into self.output list"""
-
-        # Run the shell script that will generate the full document
-        result = subprocess.run(
-            [executable],
-            universal_newlines=True,  # renamed to text= in py37
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            input=script,  # must have \n in last line
-        )
-
-        if result.returncode == 0:
-            if self.config.debug:
-                print("\nScript:", save_temp_file(script))
-        else:
-            print(
-                "Unexpected fatal error occurred:\n%s\n" % result.stdout,
-                file=sys.stderr,
-            )
-            raise RuntimeError(
-                "Failed running shell script to generate the document",
-                str(save_temp_file(script)),
-            )
-
-        self.output = result.stdout.split("\n")[:-1]  # remove \n at EOF
-
-        self.output = self.restore_prefix(self.output, self.config.prefix)
-
-    # Restore indentation in output blocks
-    # See also Script.command(), where the markers are added
-    def restore_prefix(self, text, prefix):
-        must_indent = False
-        filtered = []
-        for line in text:
-            if line == Script.OUTPUT_MARKER:
-                must_indent = not must_indent
-                continue  # remove marker
-            if must_indent:
-                line = prefix + line
-            filtered.append(line)
-        return filtered
-
-    def diff(self):
-        left = self.input_path
-        right = save_temp_file(list_as_text(self.output))
-        return subprocess.run(
-            ["diff", "-u", left, right],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            universal_newlines=True,
-        )
+def diff(left, right):
+    return subprocess.run(
+        ["diff", "-u", left, right],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        universal_newlines=True,
+    )
 
 
 def save_temp_file(contents):
@@ -251,20 +238,19 @@ def validate_config(config):
             LOG.error("cannot read input file: %s" % path)
 
 
-def parse_input(input_, prefix, prompt, shell):
-    command_id = prefix + prompt
+def parse_input(input_, config):
+    command_id = config.prefix + config.prompt
     command_id_trimmed = command_id.rstrip(" ")
     command_id_length = len(command_id)
-    script = Script.factory(shell)
+    script = Script.factory(config)
 
-    command_count = 0
     pending_output = False
     for line_number, line in enumerate(input_, start=1):
         line = re.sub(r"\r?\n$", "", line)
 
         if line.startswith(command_id):
             # Found a command line
-            command_count += 1
+            script.command_count += 1
             cmd = line[command_id_length:]
             LOG.debug("COMMA", line_number, line)
             script.echo(line)
@@ -277,7 +263,7 @@ def parse_input(input_, prefix, prompt, shell):
             pending_output = False
             script.echo(line)
 
-        elif pending_output and line.startswith(prefix):
+        elif pending_output and line.startswith(config.prefix):
             # Line has the prefix and is not a command, so this is the
             # command output
             LOG.debug("OUTPU", line_number, line)
@@ -290,7 +276,7 @@ def parse_input(input_, prefix, prompt, shell):
             pending_output = False
             script.echo(line)
 
-    return command_count, str(script)
+    return script
 
 
 def swap_ns_dict(x):
@@ -317,33 +303,45 @@ def main(config):
         if config.debug:
             LOG.info("")
 
-        runner = ScriptRunner(input_path=input_path, config=config)
-
         with input_path.open() as input_fd:
-            command_count, script = parse_input(
-                input_fd, config.prefix, config.prompt, config.shell
+            script = parse_input(input_fd, config)
+
+        if script.command_count:
+            LOG.info(
+                "Found %d commands." % script.command_count, end=" ", flush=True,
             )
 
-        if command_count:
-            LOG.info(
-                "Found %d commands." % command_count, end=" ", flush=True,
-            )
-            runner.run_script(script, config.shell)
-            diff = runner.diff()
-            if diff.returncode == 0:
+            # run
+            run_result = script.run()
+            if run_result.returncode == 0:
+                if config.debug:
+                    print("\nScript:", save_temp_file(str(script)))
+            else:
+                print(
+                    "Unexpected fatal error occurred:\n%s\n" % run_result.stdout,
+                    file=sys.stderr,
+                )
+                raise RuntimeError(
+                    "Failed running shell script to generate the document",
+                    str(save_temp_file(str(script))),
+                )
+
+            # diff
+            diff_result = diff(input_path, save_temp_file(list_as_text(script.output)))
+            if diff_result.returncode == 0:
                 LOG.info(LOG.colored("green", "PASSED"))
             else:
-                global_diff.append(diff.stdout)
+                global_diff.append(diff_result.stdout)
                 total_failed += 1
 
                 if config.fix:
                     # mv new old
-                    runner.input_path.write_text(list_as_text(runner.output))
+                    input_path.write_text(list_as_text(script.output))
                     LOG.info(LOG.colored("cyan", "FIXED"))
                 else:
                     LOG.info(LOG.colored("red", "FAILED"))
                     LOG.info()
-                    LOG.info(diff.stdout)
+                    LOG.info(diff_result.stdout)
 
         else:
             LOG.info(LOG.colored("magenta", "No commands found :("))
