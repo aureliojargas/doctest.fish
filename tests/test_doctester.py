@@ -3,6 +3,8 @@ import sys
 import unittest
 
 from context import doctester
+from context import log
+from context import defaults
 
 # o ideal seria testar tudo com e sem prefix. Talvez seja viável fazer isso nos testes via Python
 # se sim, a doc pode ser uma doc mesmo, e não uma suite de testes
@@ -16,14 +18,14 @@ from context import doctester
 class Config:
     def __init__(
         self,
-        shell=doctester.Defaults.shell,
-        prefix=doctester.Defaults.prefix,
-        prompt=doctester.Defaults.prompt,
+        shell=doctester.defaults.shell,
+        prefix=doctester.defaults.prefix,
+        prompt=doctester.defaults.prompt,
     ):
         self.shell = shell
         self.prefix = prefix
         self.prompt = prompt
-        self.color = doctester.Defaults.color
+        self.color = doctester.defaults.color
         self.debug = False
 
 
@@ -81,7 +83,7 @@ class TestX(unittest.TestCase):  # XXX fix name
 
     def test_status(self):
         config = Config()
-        for shell in doctester.Defaults.shells:
+        for shell in doctester.defaults.shells:
             config.shell = shell
             t = Template(shell=shell)
             doc = [
@@ -102,7 +104,7 @@ class TestX(unittest.TestCase):  # XXX fix name
 
     def test_set_read_var(self):
         config = Config()
-        for shell in doctester.Defaults.shells:
+        for shell in doctester.defaults.shells:
             config.shell = shell
             t = Template(shell=shell)
             doc = [
@@ -133,7 +135,9 @@ class TestX(unittest.TestCase):  # XXX fix name
         self.assertEqual(script.quote("'\\'"), "'\\'\\\\\\''")
 
 
-doctester.LOG = doctester.Log(Config())
+doctester.LOG = log.Log(Config())
+print(dir(doctester))
+sys.exit(0)
 
 if __name__ == "__main__":
     unittest.main()

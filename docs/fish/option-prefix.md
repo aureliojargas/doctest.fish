@@ -5,5 +5,5 @@ Please read the full documentation for `--prefix` in
 
 ## Empty prefix
 
-    $ ./doctester.py --prefix '' docs/include/prefix-none.md
+    $ python3 -m doctester --prefix '' docs/include/prefix-none.md
     docs/include/prefix-none.md: Found 1 commands. PASSED

@@ -13,17 +13,17 @@ For example, there's a [docs/include/prompt-custom.md](../include/prompt-custom.
 
 When calling doctester.py on that file without specifying a custom prompt, no test will be found:
 
-    $ ./doctester.py docs/include/prompt-custom.md
+    $ python3 -m doctester docs/include/prompt-custom.md
     docs/include/prompt-custom.md: No commands found :(
 
 The same happens if you specify a custom prompt that is not found in the test file:
 
-    $ ./doctester.py --prompt 404 docs/include/prompt-custom.md
+    $ python3 -m doctester --prompt 404 docs/include/prompt-custom.md
     docs/include/prompt-custom.md: No commands found :(
 
 So just make sure you are informing the correct prompt string in `--prompt` and the tests will be found:
 
-    $ ./doctester.py --prompt 'prompt$ ' docs/include/prompt-custom.md
+    $ python3 -m doctester --prompt 'prompt$ ' docs/include/prompt-custom.md
     docs/include/prompt-custom.md: Found 1 commands. PASSED
 
 ## Trailing spaces
@@ -32,12 +32,12 @@ The trailing space in prompt identifiers is usual, but it is not required.
 
 In [docs/include/prompt-no-space.md](../include/prompt-no-space.md) there's an example of a prompt which is just a single `$`, with no trailing space.
 
-    $ ./doctester.py --prompt '$' docs/include/prompt-no-space.md
+    $ python3 -m doctester --prompt '$' docs/include/prompt-no-space.md
     docs/include/prompt-no-space.md: Found 1 commands. PASSED
 
 If you to have multiple trailing spaces in your prompt identifier, this is also allowed. The example in [docs/include/prompt-extra-spaces.md](../include/prompt-extra-spaces.md) uses three spaces after `>`:
 
-    $ ./doctester.py --prompt '$   ' docs/include/prompt-extra-spaces.md
+    $ python3 -m doctester --prompt '$   ' docs/include/prompt-extra-spaces.md
     docs/include/prompt-extra-spaces.md: Found 1 commands. PASSED
 
 ## Empty prompt
@@ -46,7 +46,7 @@ Custom prompts are allowed, but you have to have something as a prompt identifie
 
 Trying to inform an empty prompt is an error:
 
-    $ ./doctester.py --prompt '' docs/include/prompt-custom.md
+    $ python3 -m doctester --prompt '' docs/include/prompt-custom.md
     doctester: Error: The prompt string cannot be empty, set it via --prompt
 
 ## See also

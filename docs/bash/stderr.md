@@ -6,12 +6,12 @@ When running the tests, doctester.py captures both stdout and stderr so it can p
 
 You can test the error output from commands, no need to mess with redirection:
 
-    $ ./doctester.py
+    $ python3 -m doctester
     doctester: Error: no test file informed
 
 You can also test both the error output and the exit status, by appending a new command to show the value of `$?` in the same test:
 
-    $ ./doctester.py; echo $?
+    $ python3 -m doctester; echo $?
     doctester: Error: no test file informed
     1
 

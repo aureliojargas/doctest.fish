@@ -20,17 +20,17 @@ For example, there's a [docs/include/prefix-tab.md](../include/prefix-tab.md) ex
 
 When calling doctester.py on that file without specifying a custom prefix, no test will be found:
 
-    $ ./doctester.py docs/include/prefix-tab.md
+    $ python3 -m doctester docs/include/prefix-tab.md
     docs/include/prefix-tab.md: No commands found :(
 
 The same happens if you specify a custom prefix that is not found in the test file:
 
-    $ ./doctester.py --prefix '@@' docs/include/prefix-tab.md
+    $ python3 -m doctester --prefix '@@' docs/include/prefix-tab.md
     docs/include/prefix-tab.md: No commands found :(
 
 So just make sure you are informing the correct prefix string in `--prefix` and the tests will be found:
 
-    $ ./doctester.py --prefix tab docs/include/prefix-tab.md
+    $ python3 -m doctester --prefix tab docs/include/prefix-tab.md
     docs/include/prefix-tab.md: Found 1 commands. PASSED
 
 $ Note that no quotes are used around `\t`, so Fish will correctly expand that to a tab character instead of `\` followed by a `t`.
@@ -39,7 +39,7 @@ $ Note that no quotes are used around `\t`, so Fish will correctly expand that t
 
 It's valid to use an empty prefix for those cases when there's no indentation at all for the test commands. Markdown fenced blocks are an example.
 
-    $ ./doctester.py --prefix '' docs/include/prefix-none.md
+    $ python3 -m doctester --prefix '' docs/include/prefix-none.md
     docs/include/prefix-none.md: Found 1 commands. PASSED
 
 It's important to note that in this case, you must **always "close" the last command's output with a prompt**, otherwise doctester.py has no way to know that this is the end of the output. Example:

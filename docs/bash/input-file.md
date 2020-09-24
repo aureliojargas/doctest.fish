@@ -9,15 +9,15 @@ Informing [multiple files as input](multifile.md) is also supported.
 
 No input file informed:
 
-    $ ./doctester.py
+    $ python3 -m doctester
     doctester: Error: no test file informed
 
 Input file not found:
 
-    $ ./doctester.py /404-foo-bar
+    $ python3 -m doctester /404-foo-bar
     doctester: Error: cannot read input file: /404-foo-bar
 
 Input file is a directory:
 
-    $ ./doctester.py /
+    $ python3 -m doctester /
     doctester: Error: input file is a directory: /
