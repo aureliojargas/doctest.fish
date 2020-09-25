@@ -1,3 +1,5 @@
+default: fmt lint test
+
 test: test-python test-fish test-bash
 
 test-bash:
@@ -17,3 +19,9 @@ test-fish:
 test-python:
 	# python3 -m unittest test_doctester.py
 	python3 -m unittest discover -s tests/
+
+lint:
+	pylint doctester/ tests/*.py
+
+fmt:
+	black --check doctester/ tests

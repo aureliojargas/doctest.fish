@@ -10,6 +10,7 @@ def diff(left, right):
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         universal_newlines=True,
+        check=False,
     )
 
 
@@ -23,7 +24,7 @@ def list_as_text(list_):
     return "\n".join(list_) + "\n"  # ensure \n at EOF
 
 
-def swap_ns_dict(x):
-    if isinstance(x, argparse.Namespace):
-        return vars(x).copy()
-    return argparse.Namespace(**x)
+def swap_ns_dict(thing):
+    if isinstance(thing, argparse.Namespace):
+        return vars(thing).copy()
+    return argparse.Namespace(**thing)

@@ -3,25 +3,29 @@ import sys
 from doctester import color
 from doctester import defaults
 
+# -1 = quiet
+#  0 = normal
+#  1 = verbose
+#  2 = debug
+level = 0  # pylint: disable=invalid-name
 
-class Log:
-    def __init__(self, config):
-        self.config = config
 
-    def info(self, *args, **kwargs):
-        if not self.config.quiet:
-            print(*args, **kwargs)
+def info(*args, **kwargs):
+    if level >= 0:
+        print(*args, **kwargs)
 
-    def error(self, message):
-        sys.exit(color.red("%s: Error: %s" % (defaults.name, message)))
 
-    def debug(self, *args):
-        if self.config.debug:
-            colors = {
-                "OTHER": "yellow",
-                "COMMA": "magenta",
-                "OUTPU": "cyan",
-                "PROMP": "green",
-            }
-            color_function = getattr(color, colors[args[0]])
-            print(color_function("----" + " ".join(str(x) for x in args)))
+def error(message):
+    sys.exit(color.red("%s: Error: %s" % (defaults.name, message)))
+
+
+def debug(*args):
+    if level >= 2:
+        colors = {
+            "OTHER": "yellow",
+            "COMMA": "magenta",
+            "OUTPU": "cyan",
+            "PROMP": "green",
+        }
+        color_function = getattr(color, colors[args[0]])
+        print(color_function("----" + " ".join(str(x) for x in args)))

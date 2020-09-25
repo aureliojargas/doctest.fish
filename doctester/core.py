@@ -11,10 +11,6 @@ from doctester import log
 from doctester import script
 from doctester import util
 
-LOG = None
-# LOG.basicConfig(format="%(levelname)s:%(message)s", level=LOG.DEBUG)
-# LOG.basicConfig(format="%(levelname)s:%(message)s", level=LOG.INFO)
-
 
 def setup_cmdline_parser():
     parser = argparse.ArgumentParser(prog=defaults.name, description=__doc__)
@@ -51,7 +47,11 @@ def setup_cmdline_parser():
         "-q", "--quiet", action="store_true", help="no output is shown",
     )
     parser.add_argument(
-        "--debug", action="store_true", help="debug",  # XXX hide
+        "-v",
+        "--verbose",
+        action="count",
+        default=defaults.verbose,
+        help="increase verbosity (cumulative)",
     )
     parser.add_argument(
         "--version", action="store_true", help="show the program version and exit",
@@ -69,23 +69,29 @@ def validate_config(config):
         config.color == "auto" and sys.stdout.isatty()
     )
 
+    # quiet/verbose
+    if config.quiet:
+        log.level = -1
+    else:
+        log.level = config.verbose
+
     # prefix
-    if config.prefix == "tab":  # XXX document and unittest it
+    if config.prefix == "tab":
         config.prefix = "\t"
 
     # prompt
     if not config.prompt:
-        LOG.error("The prompt string cannot be empty, set it via --prompt")
+        log.error("The prompt string cannot be empty, set it via --prompt")
 
     # input files
     if not config.files:
-        LOG.error("no test file informed")
+        log.error("no test file informed")
 
     for path in config.files:
         if path.is_dir():
-            LOG.error("input file is a directory: %s" % path)
+            log.error("input file is a directory: %s" % path)
         if not path.is_file():
-            LOG.error("cannot read input file: %s" % path)
+            log.error("cannot read input file: %s" % path)
 
 
 def parse_input(input_, config):
@@ -102,38 +108,60 @@ def parse_input(input_, config):
             # Found a command line
             skript.command_count += 1
             cmd = line[command_id_length:]
-            LOG.debug("COMMA", line_number, line)
+            log.debug("COMMA", line_number, line)
             skript.echo(line)
             skript.eval(cmd)
             pending_output = True
 
-        elif line == command_id or line == command_id_trimmed:
+        elif line in (command_id, command_id_trimmed):
             # Line has prompt, but it is an empty command
-            LOG.debug("PROMP", line_number, line)
+            log.debug("PROMP", line_number, line)
             pending_output = False
             skript.echo(line)
 
         elif pending_output and line.startswith(config.prefix):
             # Line has the prefix and is not a command, so this is the
             # command output
-            LOG.debug("OUTPU", line_number, line)
+            log.debug("OUTPU", line_number, line)
             # do nothing
 
         else:
             # Line is not a command neither command output
             # show_parsed_line $line_number other $line
-            LOG.debug("OTHER", line_number, line)
+            log.debug("OTHER", line_number, line)
             pending_output = False
             skript.echo(line)
 
     return skript
 
 
+def print_summary(config, passed, failed):
+    nr_files = len(config.files)
+    if nr_files > 1:
+        log.info()
+        log.info("Summary:", end=" ")
+
+        if passed == 0 and failed == 0:
+            log.info(
+                "%d files checked, but no commands were found"
+                " (check --prefix and --prompt)" % nr_files
+            )
+        elif failed > 0:
+            if config.fix:
+                log.info(
+                    "[%s] %d of %d files have been fixed"
+                    % (color.cyan("FIXED"), failed, nr_files)
+                )
+            else:
+                log.info(
+                    "[%s] %d of %d files have failed"
+                    % (color.red("FAILED"), failed, nr_files)
+                )
+        else:
+            log.info("[%s] %d files checked" % (color.green("PASSED"), nr_files))
+
+
 def main(config):
-    global LOG
-
-    LOG = log.Log(config)
-
     if config.version:
         print(defaults.name, defaults.version)
         sys.exit(0)
@@ -142,26 +170,26 @@ def main(config):
 
     total_failed = 0
     total_skipped = 0
-    global_diff = []
+    # global_diff = []
 
     for input_path in config.files:
-        LOG.info("%s:" % input_path, end=" ", flush=True)
+        log.info("%s:" % input_path, end=" ", flush=True)
 
-        if config.debug:
-            LOG.info("")
+        if config.verbose >= 2:
+            log.info("")
 
         with input_path.open() as input_fd:
             skript = parse_input(input_fd, config)
 
         if skript.command_count:
-            LOG.info(
+            log.info(
                 "Found %d commands." % skript.command_count, end=" ", flush=True,
             )
 
             # run
             run_result = skript.run()
             if run_result.returncode == 0:
-                if config.debug:
+                if config.verbose >= 2:
                     print("\nScript:", util.save_temp_file(str(skript)))
             else:
                 print(
@@ -178,51 +206,29 @@ def main(config):
                 input_path, util.save_temp_file(util.list_as_text(skript.output))
             )
             if diff_result.returncode == 0:
-                LOG.info(color.green("PASSED"))
+                log.info(color.green("PASSED"))
             else:
-                global_diff.append(diff_result.stdout)
+                # global_diff.append(diff_result.stdout)
                 total_failed += 1
 
                 if config.fix:
                     # mv new old
                     input_path.write_text(util.list_as_text(skript.output))
-                    LOG.info(color.cyan("FIXED"))
+                    log.info(color.cyan("FIXED"))
                 else:
-                    LOG.info(color.red("FAILED"))
-                    LOG.info()
-                    LOG.info(diff_result.stdout)
+                    log.info(color.red("FAILED"))
+                    log.info()
+                    log.info(diff_result.stdout)
 
         else:
-            LOG.info(color.magenta("No commands found :("))
+            log.info(color.magenta("No commands found :("))
             total_skipped += 1
 
-    nr_files = len(config.files)
-    total_passed = nr_files - total_failed - total_skipped
-    if nr_files > 1:
-        LOG.info()
-        LOG.info("Summary:", end=" ")
-
-        if total_passed == 0 and total_failed == 0:
-            LOG.info(
-                "%d files checked, but no commands were found (check --prefix and --prompt)"
-                % nr_files
-            )
-        elif total_failed > 0:
-            if config.fix:
-                LOG.info(
-                    "[%s] %d of %d files have been fixed"
-                    % (color.cyan("FIXED"), total_failed, nr_files)
-                )
-            else:
-                LOG.info(
-                    "[%s] %d of %d files have failed"
-                    % (color.red("FAILED"), total_failed, nr_files)
-                )
-        else:
-            LOG.info("[%s] %d files checked" % (color.green("PASSED"), nr_files))
+    total_passed = len(config.files) - total_failed - total_skipped
+    print_summary(config, total_passed, total_failed)
 
     # if total_failed > 0:
-    #     LOG.info()
-    #     LOG.info("\n".join(global_diff))
+    #     log.info()
+    #     log.info("\n".join(global_diff))
 
     return total_failed == 0 and total_passed > 0

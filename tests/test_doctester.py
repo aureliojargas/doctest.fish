@@ -1,39 +1,38 @@
-import io
-import sys
 import unittest
 
-from context import doctester
-from context import log
 from context import defaults
+from context import script
+from context import core
 
-# o ideal seria testar tudo com e sem prefix. Talvez seja viável fazer isso nos testes via Python
-# se sim, a doc pode ser uma doc mesmo, e não uma suite de testes
-# a doc pode ser simplificada
-# os testes python devem ser testes full, tipo os atuais, em vez de ser unit e testar só uma função. ou ter ambos.
-# posso ter templates para os testes (sem indent) e e aplicar ou não o indent ao ler estes templates, inclusive indent diferentes como tab
-# cada template é isolado (um único tipo de teste) e posso combinar templates pra fazer um test case mais extenso
-# e tem também a variação pra cada shell nestes templates (setar var)
+# o ideal seria testar tudo com e sem prefix. Talvez seja viável fazer
+# isso nos testes via Python se sim, a doc pode ser uma doc mesmo, e não
+# uma suite de testes a doc pode ser simplificada os testes python devem
+# ser testes full, tipo os atuais, em vez de ser unit e testar só uma
+# função. ou ter ambos. posso ter templates para os testes (sem indent)
+# e e aplicar ou não o indent ao ler estes templates, inclusive indent
+# diferentes como tab cada template é isolado (um único tipo de teste) e
+# posso combinar templates pra fazer um test case mais extenso e tem
+# também a variação pra cada shell nestes templates (setar var)
+
+# Ter testes pro parser, todas as combinações
+# Ter testes pro executor e suas pegadinhas
 
 
-class Config:
+class Config:  # pylint: disable=too-few-public-methods
     def __init__(
-        self,
-        shell=doctester.defaults.shell,
-        prefix=doctester.defaults.prefix,
-        prompt=doctester.defaults.prompt,
+        self, shell=defaults.shell, prefix=defaults.prefix, prompt=defaults.prompt,
     ):
         self.shell = shell
         self.prefix = prefix
         self.prompt = prompt
-        self.color = doctester.defaults.color
-        self.debug = False
+        self.color = defaults.color
+        self.verbose = defaults.verbose
 
 
 class Template:
     STATUS = {"bash": "$?", "fish": "$status"}
 
     def __init__(self, shell=None, prefix=None, prompt=None):
-        defaults = Config()
         self.shell = shell or defaults.shell
         self.prefix = prefix or defaults.prefix
         self.prompt = prompt or defaults.prompt
@@ -48,19 +47,18 @@ class Template:
     def out(self, text):
         return self.prefix + text
 
-    def prompt_alone(self, cmd):
+    def prompt_alone(self):
         return self.prefix + self.prompt.rstrip(" ")
 
-    def lorem(self):
+    def lorem(self):  # pylint: disable=no-self-use
         return "Lorem ipsum."
 
     def set_var(self, name, value):
-        if self.shell == "bash":
-            return "%s=%s" % (name, value)
-        elif self.shell == "fish":
+        if self.shell == "fish":
             return "set %s %s" % (name, value)
+        return "%s=%s" % (name, value)
 
-    def echo(self, string):
+    def echo(self, string):  # pylint: disable=no-self-use
         return "echo %s" % string
 
     def echo_status(self):
@@ -76,14 +74,11 @@ class Template:
         return [self.cmd("echo foo"), self.out("bar")]
 
 
-class TestX(unittest.TestCase):  # XXX fix name
-
-    # Ter testes pro parser, todas as combinações
-    # Ter testes pro executor e suas pegadinhas
-
+class TestDoctester(unittest.TestCase):
     def test_status(self):
+        # pylint: disable=invalid-name
         config = Config()
-        for shell in doctester.defaults.shells:
+        for shell in defaults.shells:
             config.shell = shell
             t = Template(shell=shell)
             doc = [
@@ -98,13 +93,14 @@ class TestX(unittest.TestCase):  # XXX fix name
                 t.cmd(t.echo(t.status)),
                 t.out("0"),
             ]
-            script = doctester.parse_input(doc, config)
-            script.run()
-            self.assertEqual(script.output, doc)
+            skript = core.parse_input(doc, config)
+            skript.run()
+            self.assertEqual(skript.output, doc)
 
     def test_set_read_var(self):
+        # pylint: disable=invalid-name
         config = Config()
-        for shell in doctester.defaults.shells:
+        for shell in defaults.shells:
             config.shell = shell
             t = Template(shell=shell)
             doc = [
@@ -112,12 +108,12 @@ class TestX(unittest.TestCase):  # XXX fix name
                 t.cmd(t.echo("$foo")),
                 t.out("bar"),
             ]
-            script = doctester.parse_input(doc, config)
-            script.run()
-            self.assertEqual(script.output, doc)
+            skript = core.parse_input(doc, config)
+            skript.run()
+            self.assertEqual(skript.output, doc)
 
     # def test_syntax_error(self):
-    #     script = doctester.Script.factory(Config(shell="bash"))
+    #     script = script.Script.factory(Config(shell="bash"))
     #     script.script = ['echo "']
 
     #     # Silencing stderr to avoid pollution in the test run output
@@ -128,16 +124,12 @@ class TestX(unittest.TestCase):  # XXX fix name
     #         sys.stderr = stderr_orig
 
     def test_quote_fish(self):
-        script = doctester.Script.factory(Config(shell="fish"))
-        self.assertEqual(script.quote("abc"), "'abc'")
-        self.assertEqual(script.quote("a'c"), "'a\\'c'")
-        self.assertEqual(script.quote("a\\c"), "'a\\\\c'")
-        self.assertEqual(script.quote("'\\'"), "'\\'\\\\\\''")
+        skript = script.Script.factory(Config(shell="fish"))
+        self.assertEqual(skript.quote("abc"), "'abc'")
+        self.assertEqual(skript.quote("a'c"), "'a\\'c'")
+        self.assertEqual(skript.quote("a\\c"), "'a\\\\c'")
+        self.assertEqual(skript.quote("'\\'"), "'\\'\\\\\\''")
 
-
-doctester.LOG = log.Log(Config())
-print(dir(doctester))
-sys.exit(0)
 
 if __name__ == "__main__":
     unittest.main()

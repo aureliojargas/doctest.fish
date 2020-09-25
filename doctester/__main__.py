@@ -1,7 +1,6 @@
 import sys
 
 from doctester import core
-from doctester import log
 
 if __name__ == "__main__":
     parser = core.setup_cmdline_parser()

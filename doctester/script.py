@@ -22,7 +22,7 @@ class Script:
     def executable(self):  # must be implemented in the children
         pass
 
-    def quote(self, text):
+    def quote(self, text):  # pylint: disable=no-self-use
         return shlex.quote(text)
 
     def echo(self, text):
@@ -48,6 +48,7 @@ class Script:
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             input=script_contents,  # must have \n in last line
+            check=False,
         )
         self.output = self.fix_output(
             result.stdout.split("\n")[:-1]  # remove \n at EOF

@@ -4,7 +4,7 @@
 # >>> color.on = False
 # >>> color.green("not colored")
 
-on = True
+on = True  # pylint: disable=invalid-name
 
 codes = {
     "blue": "\x1b[34;1m",
