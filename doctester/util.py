@@ -14,6 +14,17 @@ def diff(left, right):
     )
 
 
+def diff_stdin(left, stdin):
+    return subprocess.run(
+        ["diff", "-u", left, "-"],
+        input=stdin,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        universal_newlines=True,
+        check=False,
+    )
+
+
 def save_temp_file(contents):
     path = pathlib.Path(tempfile.mkstemp()[1])
     path.write_text(contents)

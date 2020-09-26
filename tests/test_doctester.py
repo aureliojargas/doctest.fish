@@ -3,6 +3,7 @@ import unittest
 from context import defaults
 from context import script
 from context import core
+from context import util
 
 # o ideal seria testar tudo com e sem prefix. Talvez seja viável fazer
 # isso nos testes via Python se sim, a doc pode ser uma doc mesmo, e não
@@ -18,15 +19,14 @@ from context import core
 # Ter testes pro executor e suas pegadinhas
 
 
-class Config:  # pylint: disable=too-few-public-methods
-    def __init__(
-        self, shell=defaults.shell, prefix=defaults.prefix, prompt=defaults.prompt,
-    ):
-        self.shell = shell
-        self.prefix = prefix
-        self.prompt = prompt
-        self.color = defaults.color
-        self.verbose = defaults.verbose
+default_config = core.setup_cmdline_parser().parse_args([])
+
+
+# Usage: get_config(shell="fish")
+def get_config(**kwargs):
+    config_dict = util.swap_ns_dict(default_config)
+    config_dict.update(kwargs)
+    return util.swap_ns_dict(config_dict)
 
 
 class Template:
@@ -77,7 +77,7 @@ class Template:
 class TestDoctester(unittest.TestCase):
     def test_status(self):
         # pylint: disable=invalid-name
-        config = Config()
+        config = get_config()
         for shell in defaults.shells:
             config.shell = shell
             t = Template(shell=shell)
@@ -99,7 +99,7 @@ class TestDoctester(unittest.TestCase):
 
     def test_set_read_var(self):
         # pylint: disable=invalid-name
-        config = Config()
+        config = get_config()
         for shell in defaults.shells:
             config.shell = shell
             t = Template(shell=shell)

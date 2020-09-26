@@ -170,7 +170,6 @@ def main(config):
 
     total_failed = 0
     total_skipped = 0
-    # global_diff = []
 
     for input_path in config.files:
         log.info("%s:" % input_path, end=" ", flush=True)
@@ -202,13 +201,10 @@ def main(config):
                 )
 
             # diff
-            diff_result = util.diff(
-                input_path, util.save_temp_file(util.list_as_text(skript.output))
-            )
+            diff_result = util.diff_stdin(input_path, util.list_as_text(skript.output))
             if diff_result.returncode == 0:
                 log.info(color.green("PASSED"))
             else:
-                # global_diff.append(diff_result.stdout)
                 total_failed += 1
 
                 if config.fix:
@@ -226,9 +222,5 @@ def main(config):
 
     total_passed = len(config.files) - total_failed - total_skipped
     print_summary(config, total_passed, total_failed)
-
-    # if total_failed > 0:
-    #     log.info()
-    #     log.info("\n".join(global_diff))
 
     return total_failed == 0 and total_passed > 0
