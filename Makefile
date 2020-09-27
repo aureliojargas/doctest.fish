@@ -1,2 +1,2 @@
 test:
-	./doctest.fish docs/*.md
+	./doctest.fish docs/*.md README.md

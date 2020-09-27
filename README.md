@@ -8,22 +8,31 @@ Make sure all your [fish](https://fishshell.com/) command line examples work as 
 
 You write something like the following in your documentation:
 
-> ## The cut command
-> You can use the `cut` command to extract parts of a text, using a delimiter:
-> ```console
-> > set my_text 'foo:bar:baz'
-> > echo $my_text
-> foo:bar:baz
-> > echo $my_text | cut -d : -f 1
-> foo
-> >
-> ```
+    ## The cut command
 
-Wouldn't it be nice if some tool could scan your documentation, detect those special lines with fish commands and actually run those commands to make sure their output matches the documented ones? That's what `doctest.fish` does.
+    You can use the `cut` command to extract parts of a text,
+    using a delimiter:
 
-For example, this very repository have all its documentation automatically tested for correctness, using the following command:
+        > set my_text 'foo:bar:baz'
+        > echo $my_text
+        foo:bar:baz
+        > echo $my_text | cut -d : -f 1
+        foo
+        >
+
+Wouldn't it be nice if some tool could scan your documentation, detect those special lines with fish commands and actually run those commands to make sure their output matches the documented ones? That's what `doctest.fish` does:
+
+    > ./doctest.fish --verbose docs/include/example-cut.md
+    docs/include/example-cut.md:6: [ ok ] set my_text 'foo:bar:baz'
+    docs/include/example-cut.md:7: [ ok ] echo $my_text
+    docs/include/example-cut.md:9: [ ok ] echo $my_text | cut -d : -f 1
+    docs/include/example-cut.md: 3 tests PASSED
+
+This very repository has many Markdown documentation files under the `docs/` directory. To test them all for the correctness of the mentioned commands, it's enough to run:
 
     ./doctest.fish docs/*.md
+
+The output will be similar to the image shown in the top of this README.
 
 ## Features
 
@@ -31,6 +40,7 @@ For example, this very repository have all its documentation automatically teste
 - You can test both stdout and [stderr output](docs/stderr.md)
 - You can also check the [command's exit status](docs/status.md) (`$status`)
 - All the commands inside an input file share the same execution environment (i.e., [defined variables are preserved](docs/variables-1.md))
+- KISS: A fish script to test fish commands.
 
 ## Usage
 
