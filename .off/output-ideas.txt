@@ -1,0 +1,91 @@
+sample outputs
+
+tests/variables-1.md: Tested 7 commands (0 failed, 0 skipped)
+tests/variables-2.md: Tested 1 commands (0 failed, 0 skipped)
+
+tests/variables-1.md: SUCCESS (7 passed, 0 failed, 0 skipped)
+tests/variables-2.md: FAILURE (5 passed, 2 failed, 1 skipped)
+
+tests/variables-1.md: OK (7 passed, 0 failed, 0 skipped)
+tests/variables-2.md: FAIL (5 passed, 2 failed, 1 skipped)
+
+tests/variables-1.md: OK (7 passed, 1 skipped)
+tests/variables-2.md: FAIL (5 passed, 2 failed, 1 skipped)
+
+tests/variables-1.md: OK (7 passed)
+tests/variables-2.md: FAIL (5 passed, 2 failed)
+
+
+tests/variables-1.md: .......
+tests/variables-2.md: ....!.!!!!...!
+tests/variables-3.md: ....
+
+Failures:
+
+
+
+tests/no-tests-found.md: No tests found
+tests/status.md: OK (3 tests passed)
+tests/syntax.md: OK (3 tests passed)
+tests/unsupported.md: OK (4 tests passed, 2 skipped)
+tests/variables-1.md: OK (7 tests passed)
+tests/variables-2.md: OK (1 tests passed)
+
+
+10 files inspected, but no tests were found (check --prefix and --prompt)
+
+OK - 10 files, 79 tests
+FAILED - 10 files, 79 tests (5 failed)
+SUCCESS - 10 files, 79 tests
+
+[OK] 10 files, 79 tests
+[FAILED] 10 files, 79 tests (5 failed)
+
+
+# echo "TOTAL: All $total_tests tests passed :)"
+# echo "TOTAL: 0 tests found :/"
+
+tests/include/custom-prompt.md: 1 tests passed
+tests/include/ok-skip-fail.md: 3 tests passed, 3 failed
+
+tests/include/custom-prompt.md: 1 OK
+tests/include/ok-skip-fail.md: 3 ok, 3 FAILED
+
+tests/include/custom-prompt.md: 1 PASSED
+tests/include/ok-skip-fail.md: 3 passed, 3 FAILED
+
+tests/include/custom-prompt.md: PASSED: 1
+tests/include/ok-skip-fail.md: passed: 3, FAILED: 3
+
+tests/include/custom-prompt.md: 1 tests PASSED
+tests/include/ok-skip-fail.md: 3 tests passed, 3 tests FAILED
+
+Summary: 10 input files, no tests were found (check --prefix and --prompt)
+Summary: 10 input files, 79 tests passed
+Summary: 10 input files, 79 tests run (5 failed)
+
+Summary: 10 input files, 79 tests PASSED
+Summary: 10 input files, 79 tests run (5 FAILED)
+
+tests/debug.md: passed: 0, FAILED 1
+tests/input-file.md: PASSED: 3
+tests/no-tests-found.md: No tests found
+tests/quiet.md: PASSED: 3
+tests/special-chars.md: PASSED: 10
+tests/status.md: PASSED: 5
+
+[FAILED] tests/debug.md: 1 of 14 tests failed
+[PASSED] tests/input-file.md: 3 tests passed
+[------] tests/no-tests-found.md: No tests found
+[PASSED] tests/quiet.md: PASSED: 3
+[PASSED] tests/special-chars.md: PASSED: 10
+[PASSED] tests/status.md: PASSED: 5
+
+tests/debug.md: 1 of 1 tests FAILED
+tests/input-file.md: 3 tests PASSED
+tests/no-tests-found.md: No tests found
+tests/quiet.md: 3 tests PASSED
+tests/special-chars.md: 10 tests PASSED
+tests/status.md: 5 tests PASSED
+tests/stderr.md: 2 tests PASSED
+tests/syntax.md: 4 tests PASSED
